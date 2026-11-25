@@ -1,0 +1,1199 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Klaster trener</title>
+<meta name="theme-color" content="#15171a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Klaster">
+<meta name="description" content="Vadnica za zbor: harmonija nad basom, klastri in note po glasovih (S, A, T, B).">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;800&display=swap" rel="stylesheet">
+<style>
+/* VOICE everyday rehearsal tool for a chamber choir, used mostly on a phone
+   IDEA a score page: voices as staves, bars ruled by black bar lines
+   PICTURE the voice grid itself (bars down the screen on a phone), plus a pitch map where seconds glow yellow
+   COLOUR white paper, black ink, one colour per voice, safety yellow for clusters
+   TYPE Figtree 800 for titles and note names + Figtree text
+   LAYOUT desktop: sticky transport on top, grid, editor beside map. Phone: tabs, vertical grid, transport fixed at the bottom, editor as a bottom sheet */
+:root{color-scheme:light dark;--bg:light-dark(#ffffff,#111315);--ink:light-dark(#15171a,#eceff1);--mut:light-dark(#5b616a,#9ba3ad);--line:light-dark(#dfe2e6,#2c3137);--soft:light-dark(#f1f3f5,#1d2125);--card:light-dark(#ffffff,#171a1d);--hi:light-dark(#ffd43b,#f2c200);--lw:112px;--barh:120px;--sheeth:0px}
+:root[data-theme=light]{color-scheme:light}
+:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+html{touch-action:manipulation;-webkit-text-size-adjust:100%}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.5 Figtree,system-ui,sans-serif;overflow-x:clip;-webkit-tap-highlight-color:transparent}
+.band{padding-left:max(4vw,16px,env(safe-area-inset-left,0px));padding-right:max(4vw,16px,env(safe-area-inset-right,0px))}
+h1{font-size:clamp(26px,5vw,46px);line-height:1.05;letter-spacing:-.02em;margin:0;font-weight:800}
+h2{font-size:20px;margin:0 0 12px;font-weight:800;letter-spacing:-.01em}
+.top{padding-top:max(26px,env(safe-area-inset-top,0px));padding-bottom:14px;display:flex;gap:8px 32px;align-items:end;justify-content:space-between}
+.desc{margin:6px 0 0;max-width:62ch;color:var(--mut)}
+.hr{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+.sample{font-size:14px;max-width:34ch;margin:0;color:var(--mut);text-align:right}
+button,select,input,textarea{font:inherit;color:inherit}
+button{-webkit-user-select:none;user-select:none}
+.btn{min-height:44px;padding:0 14px;border:1px solid var(--line);border-radius:10px;background:var(--card);font-weight:600;font-size:15px;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--ink)}
+.btn:disabled{opacity:.45;cursor:default}
+.btn[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--hi);outline-offset:2px}
+select,input[type=text]{min-height:44px;border:1px solid var(--line);border-radius:10px;background:var(--card);padding:0 10px;font-size:16px}
+.tabs{display:none}
+.bar{position:sticky;top:0;z-index:6;background:var(--bg);border-block:1px solid var(--line);display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;padding-top:10px;padding-bottom:10px}
+.tctl{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px}
+.play{width:52px;height:52px;border-radius:50%;border:0;background:var(--ink);color:var(--bg);display:grid;place-items:center;cursor:pointer;flex:none}
+.play svg{width:22px;height:22px;fill:currentColor}
+.tempo-s{display:flex;align-items:center;gap:8px;font-weight:600;font-size:15px}
+.tempo-s output{display:grid;place-items:center;padding:0 8px;font-variant-numeric:tabular-nums;white-space:nowrap;min-width:4.6em;border-inline:1px solid var(--line);font-size:15px}
+#tempo{width:130px;accent-color:var(--ink)}
+.myn{margin-left:auto;display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px;font-size:15px;color:var(--mut)}
+.myn b{font-size:30px;line-height:1;color:color-mix(in srgb,var(--c,var(--ink)) 78%,var(--ink));font-weight:800}
+.minebar{display:flex;align-items:center;gap:8px;padding-top:12px;padding-bottom:4px;overflow-x:auto;scrollbar-width:none}
+.minebar::-webkit-scrollbar{display:none}
+.minebar>*,.mchip{flex:none}
+.ml{font-weight:700;font-size:15px;white-space:nowrap}
+.mchips{display:flex;gap:6px}
+.mchip{min-height:44px;padding:0 14px;border:1px solid var(--line);border-radius:999px;background:var(--card);font-weight:600;font-size:15px;display:inline-flex;align-items:center;gap:7px;white-space:nowrap;cursor:pointer}
+.mchip[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.opts{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;padding-top:8px;padding-bottom:10px}
+.opts h2,.opts .cap{display:none}
+.gw{overflow-x:auto;padding-bottom:6px}
+.grid{display:grid;width:100%;border-bottom:2px solid var(--ink)}
+.grid>*{border-top:1px solid var(--line)}
+.lab{position:sticky;left:0;z-index:2;background:var(--bg);display:flex;flex-wrap:wrap;align-items:center;align-content:center;gap:4px 6px;padding:6px 8px 6px 0;font-weight:700;font-size:15px}
+.lab .vn{flex:1 1 calc(100% - 20px)}
+.dot{display:inline-block;width:12px;height:12px;border-radius:3px;background:var(--c);flex:none}
+.vn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mini{width:36px;height:34px;border:1px solid var(--line);border-radius:8px;background:var(--card);font-weight:800;font-size:13px;cursor:pointer;flex:none}
+.mini[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.hd{border:0;border-left:1px dashed var(--line);background:none;text-align:left;padding:6px 8px;cursor:pointer;display:flex;gap:8px;align-items:baseline;min-height:42px}
+.hd b{font-size:13px;color:var(--mut)}
+.hd .cr{display:inline-flex;flex-wrap:wrap;align-items:center;gap:4px 5px}
+.hd .ch{font-weight:800;font-size:17px;white-space:nowrap}
+.deg{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:var(--ink);color:var(--bg);font-weight:800;font-size:13px;line-height:1;font-style:normal;white-space:nowrap}
+.gleg .deg{min-width:20px;height:20px}
+.cell{border:0;border-left:1px dashed var(--line);background:none;text-align:left;padding:8px;min-height:64px;cursor:pointer;display:flex;flex-direction:column;justify-content:center;gap:2px}
+.bl{border-left:2px solid var(--ink)!important}
+.bt{border-top:2px solid var(--ink)!important}
+.cell .n{font-weight:800;font-size:19px;line-height:1.1;white-space:nowrap;color:color-mix(in srgb,var(--c) 78%,var(--ink))}
+sub{font-size:.6em;font-weight:600;color:var(--mut);vertical-align:baseline;margin-left:1px}
+.cell .i{font-size:13px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cell.kl{background-image:linear-gradient(var(--hi),var(--hi));background-repeat:no-repeat;background-size:100% 5px;background-position:0 100%}
+.cell.sel{box-shadow:inset 0 0 0 3px var(--ink)}
+.cell{position:relative}
+.cell.chg::before{content:'';position:absolute;top:6px;right:6px;width:7px;height:7px;border-radius:50%;background:var(--ink);opacity:.6}
+.gleg{margin:6px 0 0;display:flex;flex-wrap:wrap;gap:4px 16px}
+.gleg span{display:inline-flex;align-items:center;gap:6px}
+.gleg .ku{width:18px;height:5px;background:var(--hi);border-radius:2px}
+.gleg .pd{width:7px;height:7px;border-radius:50%;background:var(--ink);opacity:.6}
+.tools{display:flex;gap:8px}
+.tools .btn{display:inline-flex;align-items:center;gap:6px}
+.ic{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.toast{position:fixed;left:50%;bottom:20px;transform:translate(-50%,16px);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-weight:600;font-size:15px;opacity:0;pointer-events:none;z-index:20;width:max-content;max-width:calc(100% - 32px);text-align:center}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+@media(prefers-reduced-motion:no-preference){.toast{transition:opacity .2s,transform .2s}}
+.row-mine{background-color:color-mix(in srgb,var(--c) 10%,transparent)}
+.grid .now{background-color:var(--soft)}
+.gap{border-left:1px dashed var(--line);padding:8px;display:flex;flex-wrap:wrap;gap:4px;align-items:center;font-size:13px;font-variant-numeric:tabular-nums;color:var(--mut)}
+.gap i{font-style:normal;padding:1px 6px;border-radius:6px}
+.gap i.k{background:var(--hi);color:#1a1600;font-weight:800}
+.grid.v .corner,.grid.v .vh{position:sticky;top:0;z-index:3;background:var(--bg);box-shadow:0 1px 0 var(--line)}
+.corner{display:flex;align-items:flex-end;padding:6px 4px;font-size:13px;font-weight:700;color:var(--mut)}
+.vh{display:flex;flex-direction:column;gap:5px;padding:8px 4px 6px 6px;font-weight:700;font-size:14px;border-left:1px dashed var(--line)}
+.vh .vn{display:flex;gap:5px;align-items:center}
+.vh .ms{display:flex;gap:4px}
+.vh .mini{width:30px;height:32px}
+.grid.v .hd{border-left:0;flex-direction:column;gap:0;align-items:flex-start;justify-content:center;padding:4px 4px;min-height:58px}
+.grid.v .hd b{min-height:1em;line-height:1.2}
+.grid.v .cell{min-height:58px;padding:6px 6px 8px}
+.work{display:grid;gap:20px;padding-top:22px;padding-bottom:22px;grid-template-columns:minmax(0,1fr)}
+.panel{border:1px solid var(--line);border-radius:14px;padding:16px;background:var(--card)}
+.edh{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.edh h2{margin:0}
+.edh h2 span{color:var(--mut);font-weight:600}
+.edn{display:flex;gap:8px;align-items:center}
+.only-ph{display:none!important}
+.now-note{display:flex;gap:6px 16px;align-items:baseline;flex-wrap:wrap}
+.big{font-size:44px;font-weight:800;line-height:1;color:color-mix(in srgb,var(--c) 78%,var(--ink))}
+.chips{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:6px;margin:14px 0 6px}
+.chip{min-height:48px;border:1px solid var(--line);border-radius:10px;background:var(--bg);cursor:pointer;text-align:left;padding:4px 10px;line-height:1.2}
+.chip b{display:block;font-size:16px}
+.chip span{font-size:13px;color:var(--mut)}
+.chip[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chip[aria-pressed=true] span{color:inherit;opacity:.8}
+.rowc{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--card)}
+.seg button{min-height:44px;min-width:44px;border:0;background:none;font-weight:800;font-size:18px;cursor:pointer}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed=true]{background:var(--ink);color:var(--bg)}
+.seg span{display:grid;place-items:center;padding:0 10px;font-size:14px;font-weight:600;border-inline:1px solid var(--line);white-space:nowrap}
+.leg{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:14px;margin:0 0 8px}
+.leg span{display:inline-flex;gap:6px;align-items:center}
+.mapp{display:flex;flex-direction:column}
+.fig{position:relative;min-height:340px;flex:1}
+.fig>svg{position:absolute;inset:0;width:100%;height:100%}
+svg text{font:13px Figtree,system-ui,sans-serif;paint-order:stroke;stroke:var(--card);stroke-width:4px}
+.cap{font-size:14px;color:var(--mut);margin:8px 0 0}
+.set{display:grid;gap:20px;padding-bottom:40px;grid-template-columns:minmax(0,1fr)}
+.f{display:grid;gap:6px;margin-bottom:12px;font-weight:600;font-size:15px}
+.f2{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:0 10px}
+.err{color:#d6336c;font-size:14px;margin:0 0 8px}
+.err:empty{display:none}
+code{font-size:14px;background:var(--soft);padding:1px 5px;border-radius:5px;white-space:nowrap}
+.vrow{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.vrow .more{grid-column:2/-1;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.vrow label{display:flex;align-items:center;gap:8px;font-weight:600;font-size:15px}
+.vrow input[type=range]{width:110px;accent-color:var(--c)}
+textarea{width:100%;min-height:72px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--card);font:13px/1.4 ui-monospace,Menlo,monospace;resize:vertical;overflow-wrap:anywhere}
+.msg{font-size:14px;color:var(--mut);min-height:1.4em;margin:6px 0 0}
+@media(min-width:900px){.work{grid-template-columns:minmax(0,1fr) minmax(0,1.2fr)}.set{grid-template-columns:minmax(0,1fr) minmax(0,1.3fr)}}
+@media(prefers-reduced-motion:no-preference){.cell,.hd,.gap{transition:background-color .15s}}
+
+.modeseg button{font-size:15px;font-weight:700;padding:0 14px}
+.pl{display:flex;flex-wrap:wrap;gap:1px 7px;font-weight:800;font-size:15px;line-height:1.3;color:color-mix(in srgb,var(--c) 78%,var(--ink))}
+.pl span{white-space:nowrap}
+.pl i{font-style:normal;font-weight:600;font-size:13px;line-height:1.15;color:var(--mut);margin-left:4px;padding:0 4px;border:1px solid var(--line);border-radius:5px}
+.pgrid.pdur{grid-template-columns:repeat(7,minmax(0,1fr))}
+.pl .rs{color:var(--mut);font-weight:600}
+.cell .emp{color:var(--mut);font-weight:600;font-size:16px}
+.cell.warn{box-shadow:inset 0 -3px 0 #d6336c}
+.cell.warn.sel{box-shadow:inset 0 0 0 3px var(--ink),inset 0 -6px 0 #d6336c}
+.bw{font-style:normal;font-size:12px;font-weight:700;color:#d6336c}
+.grid .hd.inloop{background-color:color-mix(in srgb,var(--hi) 45%,transparent)}
+.pgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(46px,1fr));gap:6px;margin-top:10px}
+.pgrid button{min-height:48px;border:1px solid var(--line);border-radius:10px;background:var(--bg);font-weight:800;font-size:17px;cursor:pointer;padding:0 4px}
+.pgrid button[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.pgrid .sm{font-size:14px;font-weight:700}
+.pgrid.keys{grid-template-columns:repeat(4,minmax(0,1fr))}
+.pgrid.keys button{min-height:52px;font-size:19px;color:color-mix(in srgb,var(--c) 78%,var(--ink))}
+.pgrid.keys button.sm{color:var(--ink)}
+#bartxt{width:100%;font-family:ui-monospace,Menlo,monospace;font-size:16px}
+.pm-only{display:none!important}
+body.mode-part .pm-only{display:inline-flex!important}
+body.mode-part .hm-only{display:none!important}
+#ptxt textarea{min-height:64px}
+#ptxt .f span{display:inline-flex;align-items:center;gap:6px}
+
+/* ---------- phone ---------- */
+@media(max-width:640px){
+  body{padding-bottom:calc(var(--barh) + var(--sheeth) + 12px)}
+  .top{padding-top:max(14px,env(safe-area-inset-top,0px));padding-bottom:8px;align-items:center}
+  .desc,.sample{display:none}
+  h1{font-size:24px}
+  .hr{flex-direction:row}
+  .tools .lbl{display:none}
+  #undo{width:44px;padding:0;justify-content:center}
+  .toast{bottom:calc(var(--barh) + var(--sheeth) + 12px)}
+  body:not([data-view=vaja]) .gleg{display:none}
+  .gleg{font-size:13px}
+  .tabs{display:flex;gap:6px;padding-bottom:6px}
+  .tabs button{flex:1;min-height:44px;border:1px solid var(--line);background:var(--card);border-radius:10px;font-weight:700;font-size:15px;cursor:pointer}
+  .tabs button[aria-selected=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+  .bar{position:fixed;left:0;right:0;bottom:0;top:auto;z-index:9;border-bottom:0;flex-direction:column;align-items:stretch;gap:6px;padding-top:8px;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px))}
+  .myn{order:-1;margin:0;flex-wrap:nowrap;white-space:nowrap;overflow:hidden;font-size:14px}
+  .myn b{font-size:26px}
+  .tctl{flex-wrap:nowrap;gap:8px}
+  #tempo,.tempo-s .tl{display:none}
+  .tempo-s{order:1}
+  #hold{order:2;flex:1;padding:0 8px}
+  .tctl .play{order:3;width:56px;height:56px}
+  .minebar{padding-top:6px}
+  body:not([data-view=vaja]) .minebar,body:not([data-view=vaja]) .gw{display:none}
+  body:not([data-view=graf]) .mapp{display:none}
+  body:not([data-view=nast]) .set,body:not([data-view=nast]) .opts{display:none}
+  .gw{overflow:visible;padding-top:8px}
+  .gw.wide{overflow-x:auto}
+  .work{display:block;padding-top:8px;padding-bottom:8px}
+  .mapp .fig{min-height:max(340px,58vh)}
+  .opts{display:grid;gap:8px;padding-top:6px}
+  .opts h2{display:block;margin:0}
+  .opts .cap{display:block;margin:0}
+  .opts .btn{display:flex;justify-content:space-between;align-items:center;width:100%;min-height:50px;font-size:16px}
+  .opts .btn::after{content:'izključeno';font-weight:500;font-size:14px;opacity:.75}
+  .opts .btn[aria-pressed=true]::after{content:'vključeno'}
+  #ed{position:fixed;left:0;right:0;bottom:var(--barh);z-index:8;max-height:min(66vh,620px);overflow-y:auto;overscroll-behavior:contain;border-radius:18px 18px 0 0;border-bottom:0;padding:12px max(16px,env(safe-area-inset-right,0px)) 14px max(16px,env(safe-area-inset-left,0px));box-shadow:0 -6px 18px rgba(0,0,0,.12);transform:translateY(105%);visibility:hidden}
+  body.sheet #ed{transform:none;visibility:visible}
+  .only-ph{display:inline-flex!important}
+  p.only-ph{display:block!important}
+  .edh{margin-bottom:6px}
+  .edh h2{font-size:17px}
+  .big{font-size:36px}
+  .chips{grid-template-columns:repeat(5,minmax(0,1fr));gap:5px;margin:10px 0 4px}
+  .chip{min-height:46px;padding:0;text-align:center}
+  .chip b{font-size:17px}
+  .chip span{display:none}
+  .act{display:grid;grid-template-columns:1fr 1fr}
+  .act .btn{white-space:normal;line-height:1.2;padding:4px 8px}
+  .vrow .more{grid-column:1/-1}
+  .vrow input[type=range]{width:84px}
+}
+@media(max-width:640px) and (prefers-reduced-motion:no-preference){#ed{transition:transform .22s ease,visibility 0s linear .22s}body.sheet #ed{transition:transform .22s ease}}
+</style>
+</head>
+<body data-view="vaja">
+<header class="band top">
+  <div>
+    <h1>Klaster trener</h1>
+    <p class="desc">Bas poje progresijo, vsak glas nad njim izbere svoj interval. Izberi svoj glas, da se utiša, poslušaj ostale in poj zraven.</p>
+  </div>
+  <div class="hr">
+    <p class="sample">Naložen primer: vaša progresija v D-duru, 9 taktov, s prsti zborovodje. Vse lahko spremeniš.</p>
+    <div class="tools"><button class="btn" id="undo" aria-label="Razveljavi zadnjo spremembo"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg><span class="lbl">Razveljavi</span></button><button class="btn" id="base">Na izhodišče</button></div>
+  </div>
+</header>
+
+<nav class="band tabs" role="tablist" aria-label="Pogled">
+  <button role="tab" data-view="vaja" aria-selected="true">Vaja</button>
+  <button role="tab" data-view="graf" aria-selected="false">Graf višin</button>
+  <button role="tab" data-view="nast" aria-selected="false">Nastavitve</button>
+</nav>
+
+<div class="band bar" id="bar">
+  <div class="tctl">
+    <button class="play" id="play" aria-label="Predvajaj"><svg viewBox="0 0 24 24" id="pi"><path d="M7 4.5v15l12.5-7.5z"/></svg></button>
+    <button class="btn" id="hold" aria-pressed="false">Drži akord</button>
+    <div class="tempo-s"><span class="tl">Tempo</span><div class="seg"><button id="tdn" aria-label="Počasneje">−</button><output id="tv"></output><button id="tup" aria-label="Hitreje">+</button></div><input type="range" id="tempo" min="40" max="160" step="1" aria-label="Tempo"></div>
+  </div>
+  <div class="myn" id="myn" aria-live="polite"></div>
+</div>
+
+<div class="band minebar" id="modebar"><div class="seg modeseg" id="modeseg" role="group" aria-label="Način"></div><div class="mchips" id="pre" role="group" aria-label="Postavitev ali zanka"></div></div>
+<div class="band minebar"><span class="ml">Moj glas</span><div class="mchips" id="mine" role="group" aria-label="Moj glas"></div><button class="btn" id="self" aria-pressed="false">Slišim tudi sebe</button></div>
+
+<div class="band opts">
+  <h2>Predvajanje</h2>
+  <button class="btn" id="loop" aria-pressed="true">Ponavljaj</button>
+  <button class="btn" id="metro" aria-pressed="true">Metronom</button>
+  <button class="btn" id="cnt" aria-pressed="true">Odštej en takt</button>
+  <button class="btn" id="stag" aria-pressed="true">Drži: gradnja od spodaj</button>
+  <p class="cap">Med predvajanjem zaslon ostane prižgan, kjer brskalnik to dovoli. Če ni zvoka, preveri glasnost in stikalo za tihi način.</p>
+</div>
+
+<main>
+  <div class="band gw" id="gw"><div class="grid" id="grid"></div></div>
+  <p class="band cap gleg"><span><i class="ku"></i>klaster (1 ali 2 poltona do soseda)</span><span><i class="pd"></i>spremenjeno glede na izhodišče</span><span class="pm-only"><i class="ku" style="background:#d6336c"></i>dolžine v taktu se ne izidejo (manjka ali preveč dob)</span><span><i class="deg">4</i>stopnja, ki jo kaže zborovodja</span></p>
+
+  <section class="band work">
+    <div class="panel" id="ed" aria-label="Urejanje tona"></div>
+    <div class="panel mapp">
+      <h2>Višine glasov</h2>
+      <div class="leg" id="leg"></div>
+      <div class="fig"><svg id="map" role="img" aria-label="Višine vseh glasov po taktih, klastri označeni rumeno"></svg></div>
+      <p class="cap">Rumeno so označene sekunde med sosednjima glasovoma (1 ali 2 poltona), torej klastri. Dotik akorda v stolpcu Takt ga drži, dokler ga ne ustaviš.</p>
+    </div>
+  </section>
+
+  <section class="band set">
+    <div class="panel">
+      <h2>Progresija basa</h2>
+      <label class="f" for="prog">Takti, ločeni z navpičnico ali vejico. Več tonov v taktu ga razdeli na enake dele.
+        <input type="text" id="prog" autocomplete="off" autocapitalize="characters" spellcheck="false"></label>
+      <p class="err" id="perr"></p>
+      <label class="f" for="deg">Prsti zborovodje (stopnje), ena številka za vsak ton basa, ločene s presledkom
+        <input type="text" id="deg" autocomplete="off" spellcheck="false" inputmode="text"></label>
+      <p class="cap" id="dhint" style="margin:-4px 0 12px"></p>
+      <div class="f2">
+        <label class="f" for="key">Tonaliteta <select id="key"></select></label>
+        <label class="f" for="beats">Takt <select id="beats"></select></label>
+        <label class="f" for="nt">Imena not <select id="nt"><option value="en">C D E F G A B</option><option value="si">C D E F G A H (B = B♭)</option></select></label>
+      </div>
+      <button class="btn" id="apply">Uporabi progresijo</button>
+      <p class="cap">Primeri zapisa: <code>D | G | Bm | A</code>, <code>D,G,D,Bm,A,G,C,BA</code>, <code>D/F# G</code>, <code>Bb</code>. Mol označi z m. Tonaliteta vpliva samo na izbiro »terca v tonaliteti«.</p>
+    </div>
+    <div class="panel" id="partp">
+      <h2>Note iz partiture</h2>
+      <p class="cap" style="margin:0 0 10px">V načinu Note vsak glas dobi svoje note s tonom in dolžino. Najlažje jih vnašaš z gumbi: na zavihku Vaja preklopi na Note in tapni celico. Tu lahko celoten glas tudi vtipkaš ali prilepiš. Note ostanejo v tvojem brskalniku in v kodi, ki jo deliš z zborom. Naložen je primer: akordna postavitev v celinkah, ne note pesmi.</p>
+      <p class="cap" style="margin:0 0 10px">Zapis: <code>D4/4</code> četrtinka D4, <code>A3/2.</code> punktirana polovinka, <code>F#4/8~</code> osminka z vezajem, <code>-/4</code> četrtinska pavza, <code>H3</code> je h, <code>Bb3</code> je b. Takte loči z <code>|</code>. Če dolžine ne napišeš, velja prejšnja.</p>
+      <label class="f" for="pickup">Predtakt <select id="pickup"></select></label>
+      <div id="ptxt"></div>
+      <div class="rowc"><button class="btn" id="fromharm">Prenesi harmonijo v note</button><button class="btn" id="clrpart">Počisti vse note</button></div>
+    </div>
+    <div class="panel">
+      <h2>Glasovi</h2>
+      <div id="voices"></div>
+      <div class="rowc"><button class="btn" id="add">Dodaj glas (divisi)</button></div>
+      <h2 style="margin-top:24px">Izhodišče</h2>
+      <p class="cap" style="margin:0 0 8px">Izhodišče je stanje, na katero te vrne gumb Na izhodišče: v načinu Harmonija za intervale, v načinu Note za vnesene note. Nastavi se samo, ko naložiš kodo zborovodje ali ponastaviš primer. Ko končaš z vnosom not, ga shrani tudi sam.</p>
+      <div class="rowc" style="margin-top:0"><button class="btn" id="setbase">Shrani trenutno stanje kot izhodišče</button></div>
+      <h2 style="margin-top:24px">Deli nastavitve z zborom</h2>
+      <p class="cap" style="margin:0 0 8px">Zborovodja kopira kodo in jo pošlje pevcem. Pevec jo prilepi sem in pritisne Naloži kodo.</p>
+      <textarea id="code" aria-label="Koda nastavitev" spellcheck="false" placeholder="Sem prilepi kodo nastavitev"></textarea>
+      <div class="rowc"><button class="btn" id="copy">Kopiraj kodo</button><button class="btn" id="load">Naloži kodo</button><button class="btn" id="reset">Ponastavi primer</button></div>
+      <p class="msg" id="msg" role="status"></p>
+    </div>
+  </section>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+{
+const LET=['C','D','E','F','G','A','B'],LPC=[0,2,4,5,7,9,11],ACC=['𝄫','♭','','♯','𝄪'];
+const SH=[3,0,4,1,5,2,6],FL=[6,2,5,1,4,0,3];
+const RNG={S:[58,81,67],A:[52,74,62],T:[47,69,57],B:[40,64,50]};
+const TYP={S:'sopran',A:'alt',T:'tenor'},ORD={S:0,A:1,T:2,B:3},OFF={S:12,A:0,T:0};
+const IVK=['P1','m2','M2','m3','M3','a3','P4','A4','d5','P5','A5','m6','M6','m7','M7','P8','m9','M9','r'];
+const IV={P1:[1,0],m2:[2,1],M2:[2,2],m3:[3,3],M3:[3,4],P4:[4,5],A4:[4,6],d5:[5,6],P5:[5,7],A5:[5,8],m6:[6,8],M6:[6,9],m7:[7,10],M7:[7,11],P8:[8,12],m9:[9,13],M9:[9,14]};
+const IVL={P1:['1','prima'],m2:['m2','mala sekunda'],M2:['v2','velika sekunda'],m3:['m3','mala terca'],M3:['v3','velika terca'],a3:['3','terca v tonaliteti'],P4:['č4','čista kvarta'],A4:['zv4','zvečana kvarta'],d5:['zm5','zmanjšana kvinta'],P5:['č5','čista kvinta'],A5:['zv5','zvečana kvinta'],m6:['m6','mala seksta'],M6:['v6','velika seksta'],m7:['m7','mala septima'],M7:['v7','velika septima'],P8:['8','oktava'],m9:['m9','mala nona'],M9:['v9','velika nona'],r:['–','pavza']};
+const COLS=['#d6336c','#e8590c','#1c7ed6','#0c8599','#ae3ec9','#f08c00','#c2255c','#3b5bdb'],BASSC='#5f3dc4';
+const KEYS=[0,1,2,3,4,5,-1,-2,-3,-4];
+const PRE={
+  klastri:{short:'Klastri',name:'Klastri (terca, kvinta, kvarta)',S:Array(9).fill('a3'),A:Array(9).fill('P5'),T:Array(9).fill('P4')},
+  akordi:{short:'Akordi',name:'Akordi (štiriglasno, toni akordov)',S:['M3','P8','M3','P5','P5','P5','M3','m3','M3'],A:['P8','P5','P8','m3','M3','M3','P8','P8','P8'],T:['P5','M3+','P5','P8','P8','P8','P5','P5','P5']}};
+const PART0={S:'F#4/1 | G4 | F#4 | F#4 | E4 | D4 | E4 | D4 | C#4',A:'D4/1 | D4 | D4 | D4 | C#4 | H3 | C4 | H3 | A3',T:'A3/1 | H3 | A3 | H3 | A3 | G3 | G3 | F#3 | E3',B:'D3/1 | G2 | D3 | H2 | A2 | G2 | C3 | H2 | A2'};
+const DUR={'1':4,'2':2,'4':1,'8':.5,'16':.25,'32':.125},DLAB={'1':'1','2':'½','4':'¼','8':'⅛','16':'¹⁄₁₆','32':'¹⁄₃₂'},DNAME={'1':'celinka','2':'polovinka','4':'četrtinka','8':'osminka','16':'šestnajstinka'},DEFREF={S:67,A:62,T:55,B:48};
+const DEF={prog:'D | G | D | Bm | A | G | C | B | A',deg:'1 4 1 6 5 4 2 3 5',mode:'harm',pickup:0,loopA:-1,loopB:-1,key:2,beats:4,nt:'en',tempo:72,loop:true,metro:true,countIn:true,mine:'',self:false,stagger:true,voices:[
+  {id:'S',name:'Sopran',t:'S',vol:.8,o:0,def:'a3',c:COLS[0],cells:[],part:PART0.S},
+  {id:'A',name:'Alt',t:'A',vol:.8,o:0,def:'P5',c:COLS[1],cells:[],part:PART0.A},
+  {id:'T',name:'Tenor',t:'T',vol:.8,o:0,def:'P4',c:COLS[2],cells:[],part:PART0.T},
+  {id:'B',name:'Bas',t:'B',vol:.9,o:0,bass:true,c:BASSC,cells:[],part:PART0.B}]};
+const $=q=>document.querySelector(q);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const cl=(v,a,b)=>Math.min(b,Math.max(a,v));
+const mq=window.matchMedia('(max-width: 640px)'),rm=window.matchMedia('(prefers-reduced-motion: reduce)');
+const sm=()=>rm.matches?'auto':'smooth';
+let phone=mq.matches,sheet=false;
+let state,S={segs:[],notes:{},err:[],total:0,geo:null},sel={v:'S',k:0},hist=[];
+
+/* ---------- music ---------- */
+const keyAccK=(k,l)=>k>0?(SH.slice(0,k).includes(l)?1:0):(FL.slice(0,-k).includes(l)?-1:0);
+const keyAcc=l=>keyAccK(state.key,l);
+function nm(l,a){if(state.nt==='si'&&l===6)return a===-1?'B':a===-2?'B♭':'H'+(ACC[a+2]??'');return LET[l]+(ACC[a+2]??'');}
+const oct=n=>Math.floor((n.m-n.a)/12)-1;
+const nmo=n=>nm(n.l,n.a)+'<sub>'+oct(n)+'</sub>';
+const nmt=n=>nm(n.l,n.a)+oct(n);
+const AM={'#':1,'♯':1,'##':2,'b':-1,'♭':-1,'bb':-2,'is':1,'isis':2,'es':-1,'eses':-2,'s':-1};
+function pNote(str){
+  const r=/^([A-Ha-h])(isis|eses|##|bb|is|es|#|♯|b|♭|s)?(.*)$/.exec(str);if(!r)return null;
+  const L=r[1].toUpperCase();let acc=r[2]||'',rest=r[3];
+  if(acc==='s'&&(!(L==='A'||L==='E')||/^u/.test(rest))){rest='s'+rest;acc='';}
+  let l,a=0;
+  if(L==='H')l=6;else if(L==='B'){l=6;a=state.nt==='si'?-1:0;}else l=LET.indexOf(L);
+  if(acc){if(L==='B'&&state.nt==='si'&&AM[acc]<0)a=-1;else a+=AM[acc];}
+  return {l,a,pc:((LPC[l]+a)%12+12)%12,rest,lower:r[1]!==L};
+}
+function pChord(tok){
+  const [ms,ss]=tok.split('/');const root=pNote(ms);if(!root)return null;
+  if(root.rest&&!/^(m|min|mol|dim|°|o|-|maj|dur|sus|add|aug|\+|\d|\(|\))/i.test(root.rest))return null;
+  const q=(root.lower||/^(m(?!aj)|min|mol|-|dim|°)/.test(root.rest))?'m':'';
+  let b=root;if(ss!==undefined){b=pNote(ss);if(!b||b.rest.trim())return null;}
+  return {bass:{l:b.l,a:b.a,pc:b.pc,m:43+((b.pc-7+12)%12)},q};
+}
+function splitTok(t){const out=[];for(const p of t.split(/(?=[A-H])/)){if(out.length&&/\/$/.test(out[out.length-1]))out[out.length-1]+=p;else out.push(p);}return out.filter(Boolean);}
+function parseProg(){
+  const txt=state.prog,sep=txt.includes('|')?'|':txt.includes(',')?',':txt.includes(';')?';':null;
+  const bars=(sep?txt.split(sep):txt.trim().split(/\s+/)).map(s=>s.trim()).filter(Boolean);
+  const segs=[],err=[];let cum=0,bn=0;
+  for(const b of bars){
+    const cs=[];for(const t of b.split(/\s+/).flatMap(splitTok)){const c=pChord(t);if(c)cs.push({t,c});else err.push(t);}
+    if(!cs.length)continue;
+    const d=state.beats/cs.length;
+    cs.forEach((o,j)=>{segs.push({bar:bn,pos:j,n:cs.length,first:j===0,sb:j*d,beats:d,cum,label:o.t,bass:o.c.bass,q:o.c.q});cum+=d;});
+    bn++;
+  }
+  S.segs=segs.slice(0,64);S.err=err;S.total=S.segs.reduce((a,s)=>a+s.beats,0);
+}
+function above(b,k,q){
+  let g,s;
+  if(k==='a3'){g=3;if(q==='m')s=3;else{const l3=(b.l+2)%7;s=((LPC[l3]+keyAcc(l3)-b.pc)%12+12)%12;if(s<2||s>5)s=4;}}
+  else [g,s]=IV[k];
+  const l=(b.l+g-1)%7,m=b.m+s;let a=((m-LPC[l])%12+12)%12;if(a>6)a-=12;
+  return {l,a,m,k,s};
+}
+function degOf(sg){const t=((4*state.key)%7+7)%7,b=sg.bass,acc=b.a-keyAcc(b.l);return (acc<0?'♭'.repeat(-acc):'♯'.repeat(Math.max(0,acc)))+((b.l-t+7)%7+1);}
+function compute(){
+  parseProg();const n=S.segs.length;S.notes={};
+  const dt=String(state.deg||'').split(/[\s,|;]+/).filter(Boolean);S.deg=S.segs.map((s,k)=>{const t=(dt[k]||'').slice(0,3);return t==='-'?'':t;});S.degRaw=dt.map(t=>{t=t.slice(0,3);return t==='-'?'':t;});
+  for(const v of state.voices){
+    while(v.cells.length<n)v.cells.push(v.bass?{i:'P1',x:0,o:0}:{i:v.def,x:0,o:0});
+    const arr=[],R=RNG[v.t];
+    S.segs.forEach((sg,k)=>{
+      const c=v.cells[k],b=sg.bass;
+      if(v.bass){arr.push({l:b.l,a:b.a,m:b.m+12*(v.o+(c.o||0)),k:null,s:0});return;}
+      if(c.i==='r'){arr.push(null);return;}
+      const nt=above(b,c.i,sg.q);nt.a+=c.x||0;
+      let m=nt.m+(c.x||0)+OFF[v.t];
+      while(m<R[0])m+=12;while(m>R[1])m-=12;
+      nt.m=m+12*(v.o+(c.o||0));arr.push(nt);
+    });
+    S.notes[v.id]=arr;
+  }
+  computePart();
+}
+const vo=()=>state.voices.map((v,i)=>[v,i]).sort((p,q)=>(ORD[p[0].t]-ORD[q[0].t])||(p[1]-q[1])).map(p=>p[0]);
+const V=id=>state.voices.find(v=>v.id===id);
+const anySolo=()=>state.voices.some(v=>v.s);
+const audible=v=>anySolo()?!!v.s:!v.m;
+function sorted(k){return state.voices.map(v=>S.notes[v.id][k]).filter(Boolean).map(n=>n.m).sort((a,b)=>a-b);}
+function gaps(k){const ms=sorted(k),d=[];for(let i=1;i<ms.length;i++)d.push(ms[i]-ms[i-1]);return d;}
+function klSet(k){
+  const a=state.voices.map(v=>({id:v.id,n:S.notes[v.id][k]})).filter(o=>o.n).sort((x,y)=>x.n.m-y.n.m),s=new Set();
+  for(let i=1;i<a.length;i++){const d=a[i].n.m-a[i-1].n.m;if(d>=1&&d<=2){s.add(a[i].id);s.add(a[i-1].id);}}
+  return s;
+}
+function ivlab(v,k){
+  const c=v.cells[k],n=S.notes[v.id][k];
+  if(v.bass)return c.o?'okt '+(c.o>0?'+':'')+c.o:'bas';
+  if(c.i==='r')return 'pavza';
+  let s=c.i==='a3'?'3 ('+(n.s===3?'m':'v')+')':IVL[c.i][0];
+  if(c.x)s+=c.x>0?' ♯':' ♭';if(c.o)s+=' okt'+(c.o>0?'+':'')+c.o;return s;
+}
+
+/* ---------- state ---------- */
+function norm(o){
+  const d=JSON.parse(JSON.stringify(DEF));if(!o||typeof o!=='object')return d;
+  if(typeof o.prog==='string'&&o.prog.trim())d.prog=o.prog.slice(0,400);
+  if(typeof o.deg==='string')d.deg=o.deg.slice(0,200);
+  if(o.nt==='si'||o.nt==='en')d.nt=o.nt;
+  if(Number.isFinite(+o.key))d.key=cl(Math.round(+o.key),-4,5);
+  if(Number.isFinite(+o.beats))d.beats=cl(Math.round(+o.beats),2,6);
+  if(Number.isFinite(+o.tempo))d.tempo=cl(Math.round(+o.tempo),40,160);
+  d.mode=o.mode==='part'?'part':'harm';
+  if(Number.isFinite(+o.pickup))d.pickup=cl(Math.round(+o.pickup),0,11);if(d.pickup>=d.beats)d.pickup=0;
+  for(const k of ['loopA','loopB'])if(Number.isFinite(+o[k]))d[k]=cl(Math.round(+o[k]),-1,999);
+  if(d.loopA<0||d.loopB<d.loopA){d.loopA=-1;d.loopB=-1;}
+  for(const k of ['loop','metro','countIn','self','stagger'])if(typeof o[k]==='boolean')d[k]=o[k];
+  if(Array.isArray(o.voices)&&o.voices.length){
+    const seen=new Set();let bass=false;
+    d.voices=o.voices.filter(v=>v&&typeof v==='object').slice(0,10).map((v,i)=>{
+      let id=String(v.id||'').replace(/[^A-Za-z0-9]/g,'').slice(0,8)||'V'+i;while(seen.has(id))id+='x';seen.add(id);
+      const isB=!!v.bass&&!bass;if(isB)bass=true;
+      const t=isB?'B':(RNG[v.t]&&v.t!=='B'?v.t:'S'),def=IVL[v.def]&&v.def!=='r'?v.def:'P5';
+      return {id,name:String(v.name||'Glas').slice(0,24),t,vol:Number.isFinite(+v.vol)?cl(+v.vol,0,1):.8,o:cl(Math.round(+v.o)||0,-2,2),def,bass:isB,m:!!v.m,s:!!v.s,part:typeof v.part==='string'?v.part.slice(0,12000):(PART0[id]||''),
+        c:/^#[0-9a-fA-F]{6}$/.test(v.c||'')?v.c:'',
+        cells:Array.isArray(v.cells)?v.cells.slice(0,64).map(c=>({i:IVL[c&&c.i]?c.i:def,x:cl(Math.round(+(c&&c.x))||0,-1,1),o:cl(Math.round(+(c&&c.o))||0,-2,2)})):[]};
+    });
+    if(!bass){const nb=JSON.parse(JSON.stringify(DEF.voices[3]));while(seen.has(nb.id))nb.id+='x';d.voices.push(nb);}
+    const used=new Set();
+    d.voices.forEach(v=>{if(v.bass){v.c=v.c||BASSC;return;}if(!v.c||used.has(v.c))v.c=COLS.find(x=>!used.has(x))||COLS[0];used.add(v.c);});
+    d.voices.sort((a,b)=>(a.bass?1:0)-(b.bass?1:0));
+  }
+  if(typeof o.mine==='string'&&d.voices.some(v=>v.id===o.mine))d.mine=o.mine;
+  return d;
+}
+let svT=0;
+function save(){clearTimeout(svT);svT=setTimeout(()=>{try{localStorage.setItem('klaster-trener-3',JSON.stringify(state));}catch(e){}},300);}
+function pushU(){hist.push(JSON.stringify(state));if(hist.length>60)hist.shift();}
+function edit(fn,full,noU){if(!noU)pushU();fn();compute();render(!!full);save();if(!noU)rehold();}
+function undo(){if(!hist.length){toast('Ni česa razveljaviti.');return;}state=norm(JSON.parse(hist.pop()));compute();render(true);save();rehold();toast('Zadnja sprememba je razveljavljena.');}
+let toT=0;
+function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('on');clearTimeout(toT);toT=setTimeout(()=>e.classList.remove('on'),2800);}
+const msg=t=>{$('#msg').textContent=t;toast(t);};
+
+/* ---------- partitura (note po glasovih) ---------- */
+let ent={code:'4',dot:false,tie:false,acc:null};
+const barLen=k=>k===0&&state.pickup>0?state.pickup:state.beats;
+const barStart=k=>k<=0?0:(state.pickup>0?state.pickup+(k-1)*state.beats:k*state.beats);
+const barAt=p=>state.pickup>0?(p<state.pickup?0:1+Math.floor((p-state.pickup)/state.beats+1e-9)):Math.floor(p/state.beats+1e-9);
+const barNum=k=>state.pickup>0?(k===0?'0':String(k)):String(k+1);
+const barLab=k=>state.pickup>0&&k===0?'predtakt':'takt '+barNum(k);
+const fmtShort=x=>String(Math.round(x*100)/100).replace('.',',');
+function fmtD(x){x=Math.round(x*1000)/1000;if(Number.isInteger(x))return x+' '+(x===1?'doba':x===2?'dobi':x<5?'dobe':'dob');return (x===.5?'½':x===.25?'¼':x===1.5?'1½':String(x).replace('.',','))+' dobe';}
+function pTok(tok,last){
+  let t=tok,tie=false;if(t.endsWith('~')){tie=true;t=t.slice(0,-1);}
+  const sl=t.indexOf('/'),pp=sl<0?t:t.slice(0,sl),dp=sl<0?undefined:t.slice(sl+1);
+  let code=last.code,dot=last.dot,tr=last.tr;
+  if(dp!==undefined){const r=/^(1|2|4|8|16|32)(\.?)(t?)$/.exec(dp);if(!r)return null;code=r[1];dot=!!r[2];tr=!!r[3];}
+  const beats=DUR[code]*(dot?1.5:1)*(tr?2/3:1);
+  if(/^(-|p|r)$/i.test(pp))return {rest:true,beats,code,dot,tr,tie:false};
+  const r=/^([A-Ha-h](?:isis|eses|##|bb|is|es|#|♯|b|♭|s)?)(\d)$/.exec(pp);if(!r)return null;
+  const n=pNote(r[1]);if(!n||n.rest)return null;
+  return {rest:false,l:n.l,a:n.a,m:(+r[2]+1)*12+LPC[n.l]+n.a,beats,code,dot,tr,tie};
+}
+const partBars=v=>String(v.part||'').split('|').map(s=>s.trim());
+const barRaw=(v,k)=>partBars(v)[k]||'';
+function explicitBars(v){let last={code:'4',dot:false,tr:false};return partBars(v).map(b=>b.split(/\s+/).filter(Boolean).map(tk=>{const n=pTok(tk,last);if(!n)return tk;last={code:n.code,dot:n.dot,tr:n.tr};if(tk.includes('/'))return tk;const tie=tk.endsWith('~'),bs=tie?tk.slice(0,-1):tk;return bs+'/'+n.code+(n.dot?'.':'')+(n.tr?'t':'')+(tie?'~':'');}).join(' '));}
+function setBar(v,k,txt){const r=explicitBars(v);while(r.length<=k)r.push('');r[k]=String(txt).replace(/\|/g,' ').replace(/\s+/g,' ').trim();while(r.length&&!r[r.length-1])r.pop();v.part=r.join(' | ').slice(0,12000);}
+function tokOf(l,a,m,code,dot,tie){const n=l===6?(a<0?'B'+'b'.repeat(-a):'H'+'#'.repeat(a)):LET[l]+(a>0?'#'.repeat(a):'b'.repeat(-a));return n+(Math.floor((m-a)/12)-1)+'/'+code+(dot?'.':'')+(tie?'~':'');}
+function computePart(){
+  const P={bars:{},ev:{},n:0};
+  for(const v of state.voices){
+    const raw=partBars(v);while(raw.length&&!raw[raw.length-1])raw.pop();
+    const bars=[];let last={code:'4',dot:false,tr:false};
+    raw.forEach(b=>{const notes=[],errs=[];let sum=0;
+      for(const tk of b.split(/\s+/).filter(Boolean)){const n=pTok(tk,last);if(!n){errs.push(tk);continue;}last={code:n.code,dot:n.dot,tr:n.tr};n.off=sum;sum+=n.beats;notes.push(n);}
+      bars.push({notes,sum,errs});});
+    P.bars[v.id]=bars;P.n=Math.max(P.n,bars.length);
+  }
+  P.n=Math.max(P.n,1);
+  for(const v of state.voices){
+    const ev=[];let prev=null;
+    P.bars[v.id].forEach((b,k)=>{const bs=barStart(k),bl=barLen(k);
+      for(const n of b.notes){
+        if(n.off>=bl-1e-9){n.over=true;continue;}
+        const s=bs+n.off,d=Math.min(n.beats,bl-n.off);
+        if(n.rest){prev=null;continue;}
+        if(prev&&prev.tie&&prev.m===n.m&&Math.abs(prev.s+prev.d-s)<1e-6){prev.d+=d;prev.tie=n.tie;n.cont=true;continue;}
+        prev={m:n.m,l:n.l,a:n.a,s,d,tie:n.tie,bar:k};ev.push(prev);
+      }});
+    P.ev[v.id]=ev;
+  }
+  P.total=barStart(P.n-1)+barLen(P.n-1);
+  S.P=P;
+}
+function partClusters(){
+  const P=S.P,bd=new Set([0,P.total]);for(let k=0;k<=P.n;k++)bd.add(barStart(k));
+  const all=[];for(const v of state.voices)for(const e of P.ev[v.id]){all.push({vid:v.id,e});bd.add(e.s);bd.add(e.s+e.d);}
+  const ts=[...bd].filter(t=>t<=P.total+1e-9).sort((a,b)=>a-b),bands=[],cells=new Set();
+  for(let i=0;i<ts.length-1;i++){const t1=ts[i],t2=ts[i+1];if(t2-t1<1e-6)continue;
+    const on=all.filter(o=>o.e.s<=t1+1e-9&&o.e.s+o.e.d>=t2-1e-9).sort((a,b)=>a.e.m-b.e.m);
+    for(let j=1;j<on.length;j++){const d=on[j].e.m-on[j-1].e.m;if(d>=1&&d<=2){bands.push({t1,t2,lo:on[j-1].e.m,hi:on[j].e.m});const k=barAt(t1);cells.add(on[j].vid+':'+k);cells.add(on[j-1].vid+':'+k);}}}
+  return {bands,cells};
+}
+function noteHtml(n){const dl=(DLAB[n.code]||'')+(n.dot?'.':'')+(n.tr?'³':'');if(n.rest)return `<span class="rs">–<i>${dl}</i></span>`;return `<span>${n.cont?'⁀':''}${nm(n.l,n.a)}<sub>${Math.floor((n.m-n.a)/12)-1}</sub><i>${dl}${n.tie?'⁀':''}</i></span>`;}
+function partCell(v,k,cls,kl,chg){
+  const b=(S.P.bars[v.id]||[])[k],len=barLen(k),has=b&&(b.notes.length||b.errs.length),warn=has&&(Math.abs(b.sum-len)>1e-6||b.errs.length>0);
+  const inner=has?`<span class="pl">${b.notes.map(noteHtml).join('')}${b.errs.length?'<span class="bw">?</span>':''}</span>${warn&&!b.errs.length?`<em class="bw" title="V taktu je ${fmtShort(b.sum)} od ${len} dob">${b.sum<len?'manjka '+fmtShort(len-b.sum):'preveč '+fmtShort(b.sum-len)}</em>`:''}`:`<span class="emp">${k>=S.P.n?'+':'·'}</span>`;
+  return `<button class="cell${cls}${state.mine===v.id?' row-mine':''}${kl.has(v.id+':'+k)?' kl':''}${chg(v,k)?' chg':''}${warn?' warn':''}${sel.v===v.id&&sel.k===k?' sel':''}" data-v="${v.id}" data-s="${k}" style="--c:${v.c}">${inner}</button>`;
+}
+function renderGridPart(){
+  const g=$('#grid'),gw=$('#gw'),vs=vo(),N=S.P.n+1,kl=partClusters().cells,chg=chgFnP();
+  const inL=k=>state.loopA>=0&&k>=state.loopA&&k<=state.loopB;
+  const ms=v=>`<button class="mini" data-mu="${v.id}" aria-pressed="${!!v.m}" title="Utišaj glas" aria-label="Utišaj ${esc(v.name)}">M</button><button class="mini" data-so="${v.id}" aria-pressed="${!!v.s}" title="Samo ta glas" aria-label="Samo ${esc(v.name)}">S</button>`;
+  const hd=(k,bc)=>`<button class="hd${k?bc:''}${inL(k)?' inloop':''}" data-h="${k}" title="Tapni za zanko"><b>${k<S.P.n?barNum(k):'nov'}</b><span class="cr">${pill(S.degRaw[k])}</span></button>`;
+  let h='';
+  if(phone){
+    const wide=vs.length>5;gw.classList.toggle('wide',wide);g.className='grid v';
+    g.style.gridTemplateColumns=`56px repeat(${vs.length},minmax(${wide?80:0}px,1fr))`;g.style.minWidth=wide?(56+vs.length*80)+'px':'';
+    h='<div class="corner">Takt</div>'+vs.map(v=>`<div class="vh${state.mine===v.id?' row-mine':''}" style="--c:${v.c}"><span class="vn"><i class="dot"></i>${esc(v.name)}</span><span class="ms">${ms(v)}</span></div>`).join('');
+    for(let k=0;k<N;k++)h+=hd(k,' bt')+vs.map(v=>partCell(v,k,k?' bt':'',kl,chg)).join('');
+  }else{
+    gw.classList.remove('wide');g.className='grid h';
+    g.style.gridTemplateColumns=`var(--lw) repeat(${N},minmax(118px,1fr))`;g.style.minWidth=`calc(var(--lw) + ${N*118}px)`;
+    h='<div class="lab">Takt</div>';for(let k=0;k<N;k++)h+=hd(k,' bl');
+    for(const v of vs){h+=`<div class="lab" style="--c:${v.c}"><span class="dot"></span><span class="vn">${esc(v.name)}</span>${ms(v)}</div>`;for(let k=0;k<N;k++)h+=partCell(v,k,k?' bl':'',kl,chg);}
+  }
+  g.innerHTML=h;
+}
+function barStatus(v,k){
+  const b=(S.P.bars[v.id]||[])[k],len=barLen(k);
+  if(!b||(!b.notes.length&&!b.errs.length))return 'Takt je prazen. Izberi dolžino, nato tapni note.';
+  const df=len-b.sum;let s=Math.abs(df)<1e-6?'Takt je poln.':df>0?`Do polnega takta manjka še ${fmtD(df)}.`:`V taktu je ${fmtD(-df)} preveč.`;
+  if(b.errs.length)s+=' Ne razumem: '+b.errs.join(', ')+'.';return s;
+}
+function updBarSt(){const el=$('#barst'),v=V(sel.v);if(el&&v)el.textContent=barStatus(v,sel.k);}
+function renderEdPart(){
+  const e=$('#ed'),v=V(sel.v)||vo()[0];sel.v=v.id;sel.k=cl(sel.k,0,S.P.n);const k=sel.k;
+  const t=((4*state.key)%7+7)%7,ks=[];for(let l=0;l<7;l++){const a=keyAcc(l);if(a)ks.push(nm(l,a));}
+  const kA=l=>ent.acc===null?keyAcc(l):ent.acc;
+  let h=`<div class="edh"><h2>${esc(v.name)} <span>· ${barLab(k)}${S.degRaw[k]?' · prst '+esc(S.degRaw[k]):''}</span></h2><div class="edn"><div class="seg"><button data-nav="-1" aria-label="Prejšnji takt">‹</button><button data-nav="1" aria-label="Naslednji takt">›</button></div><button class="btn only-ph" data-act="close">Zapri</button></div></div>`;
+  h+=`<label class="f" for="bartxt" style="margin:0">Note v tem taktu<input type="text" id="bartxt" value="${esc(barRaw(v,k))}" autocomplete="off" autocapitalize="characters" spellcheck="false"></label><p class="cap" id="barst" aria-live="polite" style="margin:6px 0 0">${esc(barStatus(v,k))}</p>`;
+  h+=`<div class="pgrid pdur" role="group" aria-label="Dolžina">${['1','2','4','8','16'].map(c=>`<button data-pd="${c}" aria-pressed="${ent.code===c}" title="${DNAME[c]}" aria-label="${DNAME[c]}">${DLAB[c]}</button>`).join('')}<button class="sm" data-pdot aria-pressed="${ent.dot}" title="Pika podaljša noto za polovico">pika</button><button class="sm" data-ptie aria-pressed="${ent.tie}" title="Vezaj na naslednjo enako noto">vezaj</button></div>`;
+  h+=`<div class="pgrid keys" role="group" aria-label="Note" style="--c:${v.c}">${[0,1,2,3,4,5,6].map(l=>`<button data-pk="${l}">${nm(l,kA(l))}</button>`).join('')}<button class="sm" data-prest>pavza</button></div>`;
+  h+=`<div class="rowc"><div class="seg" role="group" aria-label="Predznak za naslednjo noto"><button data-pacc="auto" aria-pressed="${ent.acc===null}" style="font-size:14px;padding:0 10px">po ključu</button><button data-pacc="-1" aria-pressed="${ent.acc===-1}" aria-label="Nižaj">♭</button><button data-pacc="0" aria-pressed="${ent.acc===0}" aria-label="Razvezaj">♮</button><button data-pacc="1" aria-pressed="${ent.acc===1}" aria-label="Višaj">♯</button></div></div>`;
+  h+=`<p class="cap" style="margin:6px 0 0">Predznaki ${nm(t,keyAccK(state.key,t))}-dura: ${ks.length?ks.join(' '):'brez'}. Oktavo izberem glede na prejšnjo noto, popraviš jo z gumboma Zadnja okt.</p>`;
+  h+=`<div class="rowc"><button class="btn" data-pdel>Briši zadnjo</button><button class="btn" data-poct="-1">Zadnja okt −</button><button class="btn" data-poct="1">Zadnja okt +</button><button class="btn" data-pcopy${k?'':' disabled'}>Kopiraj prejšnji takt</button><button class="btn" data-pclr>Počisti takt</button></div>`;
+  h+=`<div class="rowc act"><button class="btn" data-pplay="v">Poslušaj takt: ${esc(v.name)}</button><button class="btn" data-pplay="all">Poslušaj takt: vsi</button><button class="btn" data-act="hold" aria-pressed="${holding===k}">${holding===k?'Ustavi držanje':'Drži akord'}</button><button class="btn" data-act="undo"${hist.length?'':' disabled'}>Razveljavi</button><button class="btn" data-pvbase${voiceChgP(v)?'':' disabled'}>${esc(v.name)} na izhodišče</button></div>`;
+  e.innerHTML=h;
+}
+function appendTok(v,tok){
+  const k=sel.k;edit(()=>{setBar(v,k,(barRaw(v,k)+' '+tok).trim());});
+  ent.acc=null;ent.tie=false;
+  const b=(S.P.bars[v.id]||[])[k];
+  if(b&&b.sum>=barLen(k)-1e-9){sel.k=k+1;renderGrid();reNow();}
+  renderEd();revealSel();
+}
+function tapNote(l){
+  const v=V(sel.v);if(!v)return;
+  const a=ent.acc===null?keyAcc(l):ent.acc,pc=LPC[l]+a,bars=S.P.bars[v.id]||[];let ref=DEFREF[v.t]??60;
+  outer:for(let kk=Math.min(sel.k,bars.length-1);kk>=0;kk--){const ns=bars[kk].notes;for(let i=ns.length-1;i>=0;i--)if(!ns[i].rest){ref=ns[i].m;break outer;}}
+  const m=pc+12*Math.round((ref-pc)/12);
+  appendTok(v,tokOf(l,a,m,ent.code,ent.dot,ent.tie));prevNote(m,.45);
+}
+function lastEv(v,k){const b=(S.P.bars[v.id]||[])[k];if(!b)return null;const ns=b.notes.filter(n=>!n.rest);return ns[ns.length-1]||null;}
+function playBar(k,only){
+  if(!ensure())return;if(seq||holding>=0)stopAll();
+  const t=ac.currentTime+.05,spb=60/state.tempo,bs=barStart(k),be=bs+barLen(k);
+  for(const v of state.voices){if(only&&v.id!==only)continue;for(const e of S.P.ev[v.id]||[])if(e.s>=bs-1e-9&&e.s<be-1e-9)tone(pv,e.m,t+(e.s-bs)*spb,Math.max(.05,Math.min(e.d,be-e.s)*spb-.02));}
+}
+function edPartClick(b,d){
+  const v=V(sel.v);if(!v)return;const k=sel.k;
+  if(d.act==='close'){closeSheet();return;}
+  if(d.act==='undo'){undo();return;}
+  if(d.act==='hold'){userHold(k);return;}
+  if(d.nav){sel.k=cl(k+ +d.nav,0,S.P.n);renderGrid();renderEd();reNow();revealSel();return;}
+  if(d.pd){ent.code=d.pd;renderEd();return;}
+  if(d.pdot!==undefined){ent.dot=!ent.dot;renderEd();return;}
+  if(d.ptie!==undefined){ent.tie=!ent.tie;renderEd();return;}
+  if(d.pacc!==undefined){ent.acc=d.pacc==='auto'?null:+d.pacc;renderEd();return;}
+  if(d.pk!==undefined){tapNote(+d.pk);return;}
+  if(d.prest!==undefined){appendTok(v,'-/'+ent.code+(ent.dot?'.':''));return;}
+  if(d.pdel!==undefined){edit(()=>{let kk=sel.k,r=barRaw(v,kk);if(!r&&kk>0){kk--;sel.k=kk;r=barRaw(v,kk);}const t=r.split(/\s+/).filter(Boolean);t.pop();setBar(v,kk,t.join(' '));});revealSel();return;}
+  if(d.poct){edit(()=>{const t=barRaw(v,k).split(/\s+/).filter(Boolean);if(!t.length)return;t[t.length-1]=t[t.length-1].replace(/^([A-Ha-h](?:isis|eses|##|bb|is|es|#|♯|b|♭|s)?)(\d)/,(x,p,o)=>p+cl(+o+ +d.poct,0,8));setBar(v,k,t.join(' '));});const n=lastEv(v,k);if(n)prevNote(n.m,.5);return;}
+  if(d.pcopy!==undefined){if(k>0)edit(()=>setBar(v,k,barRaw(v,k-1)));return;}
+  if(d.pclr!==undefined){edit(()=>setBar(v,k,''));return;}
+  if(d.pplay){playBar(k,d.pplay==='v'?v.id:null);return;}
+  if(d.pvbase!==undefined){voiceToBaseP(v.id);return;}
+}
+function loopTap(k){
+  if(k>=S.P.n)return;let A=state.loopA,B=state.loopB;
+  if(A<0){A=B=k;}else if(A===B&&k===A){A=B=-1;}else if(k<A)A=k;else if(k>B)B=k;else{A=B=k;}
+  state.loopA=A;state.loopB=B;save();renderGrid();reNow();syncT();
+  toast(A<0?'Zanka je izklopljena, predvaja se cela pesem.':A===B?`Zanka: ${barLab(A)}. Tapni še drug takt za daljši odsek.`:`Zanka: takti ${barNum(A)}–${barNum(B)}.`);
+}
+function partRange(){const N=S.P.n;let A=0,B=N-1;if(state.loopA>=0){A=Math.min(state.loopA,N-1);B=Math.min(Math.max(state.loopB,A),N-1);}return {A,B,L:barStart(A),E:barStart(B)+barLen(B)};}
+function buildIter(){
+  const r=partRange(),evs=[];
+  for(const v of state.voices)for(const e of S.P.ev[v.id]||[])if(e.s>=r.L-1e-9&&e.s<r.E-1e-9)evs.push({vid:v.id,m:e.m,s:e.s,d:Math.min(e.d,r.E-e.s)});
+  if(state.metro)for(let b=Math.ceil(r.L-1e-9);b<r.E-1e-9;b++)evs.push({click:true,s:b,acc:Math.abs(barStart(barAt(b))-b)<1e-6});
+  evs.sort((a,b)=>a.s-b.s);seq.r=r;seq.evs=evs;seq.i=0;seq.spb=60/state.tempo;
+}
+function playPart(){
+  const spb=60/state.tempo;let t=ac.currentTime+.12;
+  if(state.countIn){for(let i=0;i<state.beats;i++)click(t+i*spb,i===0);t+=state.beats*spb;}
+  seq={part:true,t0:t,i:0,evs:[],end:0,prev:null};buildIter();S.pos=-1;
+  timer=setInterval(sched,25);sched();raf=requestAnimationFrame(tick);wake(true);syncT();renderEd();
+}
+function schedPart(){
+  const now=ac.currentTime;live=live.filter(n=>n.end>now-1);
+  while(!seq.end){
+    if(seq.i>=seq.evs.length){const iterEnd=seq.t0+(seq.r.E-seq.r.L)*seq.spb;if(iterEnd>now+.2)break;
+      if(state.loop||state.loopA>=0){seq.prev={t0:seq.t0,r:seq.r,spb:seq.spb};seq.t0=iterEnd;buildIter();continue;}
+      seq.end=iterEnd;break;}
+    const e=seq.evs[seq.i],at=seq.t0+(e.s-seq.r.L)*seq.spb;if(at>now+.2)break;
+    if(e.click)click(at,e.acc);else tone(vgOf(e.vid),e.m,at,Math.max(.05,e.d*seq.spb-.02));
+    seq.i++;
+  }
+  if(seq.end&&now>seq.end+.1)stopAll();
+}
+function tickPart(){
+  const now=ac.currentTime;let t0=seq.t0,r=seq.r,spb=seq.spb;
+  if(now<t0&&seq.prev)({t0,r,spb}=seq.prev);
+  const pos=now<t0?-1:r.L+(now-t0)/spb;S.pos=pos;setNowP(pos);
+  if(state.mine){const ev=S.P.ev[state.mine]||[];const i=pos<0?-1:ev.findIndex(x=>x.s<=pos+1e-6&&pos<x.s+x.d-1e-6);if(i!==S.myI)renderMy();}
+}
+function setNowP(pos){
+  const k=pos<0?-1:barAt(pos);if(k!==nowK)hiNow(k);
+  const ph=$('#ph');if(!ph)return;
+  if(pos<0||!S.geo||!seq){ph.setAttribute('visibility','hidden');return;}
+  const X=S.geo.x(pos);ph.setAttribute('x1',X);ph.setAttribute('x2',X);ph.setAttribute('visibility','visible');
+}
+function holdPart(k,stag){
+  if(!ensure())return;stopAll();holding=k;
+  const bs=barStart(k),be=bs+barLen(k);
+  const items=state.voices.map(v=>{const ev=S.P.ev[v.id]||[];return {v,e:ev.find(x=>x.s<=bs+1e-6&&bs<x.s+x.d-1e-6)||ev.find(x=>x.s>=bs-1e-6&&x.s<be-1e-6)};}).filter(o=>o.e).sort((a,c)=>a.e.m-c.e.m);
+  const t=ac.currentTime+.05;items.forEach((o,i)=>tone(vgOf(o.v.id),o.e.m,t+(stag?i*2:0),900));
+  wake(true);setNow(k,0);syncT();renderEd();
+}
+function renderMyPart(){
+  const e=$('#myn'),v=V(state.mine);
+  if(!v){S.myI=-2;e.innerHTML=`<span>${phone?'Svoj glas izberi zgoraj, pri Moj glas.':'Izberi svoj glas, da ga utišaš in vidiš svoj ton.'}</span>`;return;}
+  const ev=S.P.ev[v.id]||[],play=!!(seq&&seq.part&&S.pos>=0),pos=play?S.pos:barStart(sel.k);
+  let i=ev.findIndex(x=>x.s<=pos+1e-6&&pos<x.s+x.d-1e-6);const at=i;
+  if(i<0&&!play)i=ev.findIndex(x=>x.s>=pos-1e-6);
+  const cur=i>=0?ev[i]:null,nx=i>=0?ev[i+1]:ev.find(x=>x.s>pos),k=Math.min(barAt(Math.max(0,pos)),S.P.n-1);
+  S.myI=play?at:-2;e.style.setProperty('--c',v.c);
+  e.innerHTML=`<span>${esc(v.name)}, ${barLab(k)}</span>${pill(S.degRaw[k])}<b>${cur?nmo(cur):'pavza'}</b><span>nato ${nx?nmt(nx):'–'}</span>`;
+}
+function drawMapPart(){
+  const s=$('#map'),W=s.clientWidth,H=s.clientHeight,P=S.P;
+  if(!W||!H){s.innerHTML='';S.geo=null;return;}
+  const vs=vo(),all=[];for(const v of vs)for(const e of P.ev[v.id])all.push(e.m);
+  if(!all.length){s.innerHTML=`<text x="${W/2}" y="${H/2}" text-anchor="middle" fill="var(--mut)">Še ni vnesenih not.</text>`;S.geo=null;return;}
+  let lo=Math.min(...all)-2,hi=Math.max(...all)+2;if(hi-lo<14){const c=(hi+lo)/2;lo=c-7;hi=c+7;}
+  const tot=P.total,L=40,R=10,T=12,B=28,iw=W-L-R,ih=H-T-B,x=b=>L+iw*b/tot,y=m=>T+ih*(hi-m)/(hi-lo),rh=Math.max(4,Math.min(18,ih/(hi-lo)*.9)),step=Math.max(1,Math.ceil(P.n*26/iw));
+  let h='';
+  for(let m=Math.ceil(lo);m<=hi;m++)if(m%12===0)h+=`<line x1="${L}" x2="${W-R}" y1="${y(m)}" y2="${y(m)}" stroke="var(--line)"/><text x="${L-6}" y="${y(m)+4}" text-anchor="end" fill="var(--mut)">C${m/12-1}</text>`;
+  for(let k=0;k<P.n;k++){const X=x(barStart(k));h+=`<line x1="${X}" x2="${X}" y1="${T}" y2="${H-B}" stroke="var(--ink)" stroke-opacity=".35"/>`;if(k%step===0)h+=`<text x="${X+3}" y="${H-8}" fill="var(--mut)">${barNum(k)}</text>`;}
+  for(const b of partClusters().bands)h+=`<rect x="${x(b.t1)}" width="${Math.max(1,x(b.t2)-x(b.t1))}" y="${y(b.hi)-rh/2-3}" height="${y(b.lo)-y(b.hi)+rh+6}" rx="4" fill="var(--hi)" opacity=".8"/>`;
+  for(const v of vs){const mine=state.mine===v.id;for(const e of P.ev[v.id]){const x0=x(e.s)+1,w=Math.max(2,x(e.s+e.d)-x(e.s)-2);
+    h+=`<rect x="${x0}" y="${y(e.m)-rh/2}" width="${w}" height="${rh}" rx="${Math.min(4,rh/2)}" fill="${v.c}"${mine?' stroke="var(--ink)" stroke-width="2"':''} opacity="${audible(v)?1:.35}"><title>${esc(v.name)}: ${nmt(e)}</title></rect>`;
+    if(rh>=15&&w>=40)h+=`<text x="${x0+4}" y="${y(e.m)+4.5}" fill="#fff" style="stroke:none">${nmt(e)}</text>`;}}
+  h+=`<line id="ph" x1="0" x2="0" y1="${T}" y2="${H-B}" stroke="var(--ink)" stroke-width="2" visibility="hidden"/>`;
+  s.innerHTML=h;S.geo={x};
+}
+function renderPartTxt(){
+  $('#pickup').innerHTML=Array.from({length:state.beats},(x,i)=>`<option value="${i}">${i?fmtD(i):'brez predtakta'}</option>`).join('');$('#pickup').value=state.pickup;
+  $('#ptxt').innerHTML=vo().map(v=>`<label class="f" for="pt-${v.id}" style="--c:${v.c}"><span><i class="dot"></i>${esc(v.name)}</span><textarea id="pt-${v.id}" data-pt="${v.id}" rows="3" spellcheck="false" autocapitalize="characters">${esc(v.part||'')}</textarea></label>`).join('');
+}
+const B2C={4:'1',3:'2.',2:'2',1.5:'4.',1:'4',.75:'8.',.5:'8',.25:'16'};
+function fromHarm(){
+  edit(()=>{
+    for(const v of state.voices){const bars=[];
+      S.segs.forEach((sg,k)=>{const c=B2C[Math.round(sg.beats*1000)/1000]||'4',code=c.replace('.',''),dot=c.endsWith('.'),n=S.notes[v.id][k];(bars[sg.bar]=bars[sg.bar]||[]).push(n?tokOf(n.l,n.a,n.m,code,dot,false):'-/'+code+(dot?'.':''));});
+      v.part=bars.map(b=>(b||[]).join(' ')).join(' | ');}
+    state.pickup=0;state.mode='part';sel.k=0;
+  },true);
+  toast('Harmonija je prenesena v note. Zdaj si v načinu Note.');
+}
+
+/* ---------- presets ---------- */
+const pk=(arr,k)=>{const s=arr[Math.min(k,arr.length-1)];return {i:s.replace('+',''),x:0,o:s.endsWith('+')?1:0};};
+function matchPreset(){
+  const n=S.segs.length;
+  for(const [key,p] of Object.entries(PRE)){
+    let ok=true;
+    for(const id of ['S','A','T']){const v=V(id);if(!v||v.o){ok=false;break;}for(let k=0;k<n;k++){const e=pk(p[id],k),c=v.cells[k];if(!c||c.i!==e.i||(c.x||0)!==0||(c.o||0)!==e.o){ok=false;break;}}if(!ok)break;}
+    if(ok)return key;
+  }
+  return '';
+}
+function applyPreset(key){
+  const p=PRE[key];if(!p)return;
+  edit(()=>{for(const id of ['S','A','T']){const v=V(id);if(!v)continue;v.o=0;v.cells=S.segs.map((s,k)=>pk(p[id],k));if(key==='klastri')v.def=p[id][0];}},true);
+  setBase();toast(`Naložena postavitev ${p.name}. Na izhodišče te zdaj vrne sem.`);
+}
+
+/* ---------- baseline (izhodišče) ---------- */
+let base=null;
+function musical(s,n){return {prog:s.prog,key:s.key,beats:s.beats,nt:s.nt,voices:(s.voices||[]).map(v=>({id:v.id,name:v.name,t:v.t,o:v.o||0,def:v.bass?'':v.def,bass:!!v.bass,c:v.c,cells:(v.cells||[]).slice(0,n).map(c=>({i:c.i,x:c.x||0,o:c.o||0}))}))};}
+function saveBase(){try{localStorage.setItem('klaster-trener-base-3',JSON.stringify(base));}catch(e){}}
+function setBase(){base=musical(state,S.segs.length);saveBase();syncT();renderGrid();renderEd();reNow();}
+function baseDiff(){if(!base)return false;const n=S.segs.length;return JSON.stringify(musical(state,n))!==JSON.stringify(musical(base,n));}
+function chgFn(){
+  if(!base)return ()=>false;
+  const bm={};for(const v of base.voices||[])bm[v.id]=v;
+  return (v,k)=>{
+    const b=bm[v.id];if(!b)return true;
+    if((b.o||0)!==(v.o||0)||(!v.bass&&b.t!==v.t))return true;
+    const bc=(b.cells||[])[k]||{i:b.bass?'P1':b.def,x:0,o:0},c=v.cells[k];if(!c)return false;
+    if(v.bass)return (c.o||0)!==(bc.o||0);
+    return c.i!==bc.i||(c.x||0)!==(bc.x||0)||(c.o||0)!==(bc.o||0);
+  };
+}
+function toBase(){
+  if(!base)return;
+  if(!baseDiff()){toast('Že si na izhodišču.');return;}
+  edit(()=>{
+    const keep={};state.voices.forEach(v=>{keep[v.id]={m:v.m,s:v.s,vol:v.vol};});
+    const o=Object.assign({},JSON.parse(JSON.stringify(base)),{deg:state.deg,tempo:state.tempo,loop:state.loop,metro:state.metro,countIn:state.countIn,self:state.self,stagger:state.stagger,mine:state.mine});
+    o.voices.forEach(v=>{const k=keep[v.id];if(k)Object.assign(v,k);else v.vol=.8;});
+    state=norm(o);
+  },true);
+  toast('Vrnjeno na izhodišče. Razveljavi, če si se zmotil.');
+}
+let baseP=null;
+function sigBars(s){const r=String(s||'').split('|').map(x=>x.trim());while(r.length&&!r[r.length-1])r.pop();let last={code:'4',dot:false,tr:false};return r.map(b=>b.split(/\s+/).filter(Boolean).map(tk=>{const n=pTok(tk,last);if(!n)return '?'+tk;last={code:n.code,dot:n.dot,tr:n.tr};return (n.rest?'r':n.m)+':'+n.beats+(n.tie?'~':'');}).join(','));}
+function saveBaseP(){try{localStorage.setItem('klaster-trener-baseP-3',JSON.stringify(baseP));}catch(e){}}
+function setBaseP(){baseP={pickup:state.pickup,voices:state.voices.map(v=>({id:v.id,part:String(v.part||'')}))};saveBaseP();if(state.mode==='part'){syncT();renderGrid();renderEd();reNow();}}
+function basePartOf(id){const b=baseP&&(baseP.voices||[]).find(x=>x.id===id);return b?String(b.part||''):'';}
+function voiceChgP(v){return !!baseP&&sigBars(v.part).join('|')!==sigBars(basePartOf(v.id)).join('|');}
+function baseDiffP(){if(!baseP)return false;if((+baseP.pickup||0)!==state.pickup)return true;return state.voices.some(voiceChgP);}
+function chgFnP(){
+  if(!baseP)return ()=>false;const bm={},cur={};
+  for(const v of baseP.voices||[])bm[v.id]=sigBars(v.part);
+  for(const v of state.voices)cur[v.id]=sigBars(v.part);
+  return (v,k)=>((cur[v.id]||[])[k]||'')!==((bm[v.id]||[])[k]||'');
+}
+function toBaseP(){
+  if(!baseP)return;
+  if(!baseDiffP()){toast('Note so že na izhodišču.');return;}
+  edit(()=>{state.voices.forEach(v=>{v.part=basePartOf(v.id).slice(0,12000);});state.pickup=cl(Math.round(+baseP.pickup)||0,0,state.beats-1);},true);
+  toast('Note so vrnjene na izhodišče. Razveljavi, če si se zmotil.');
+}
+function voiceToBaseP(id){const v=V(id);if(!v)return;edit(()=>{v.part=basePartOf(id).slice(0,12000);},true);toast(`${v.name}: note so vrnjene na izhodišče.`);}
+function voiceToBase(id){
+  const b=base&&(base.voices||[]).find(v=>v.id===id),v=V(id);
+  if(!b||!v){toast('Tega glasu v izhodišču ni.');return;}
+  edit(()=>{
+    v.o=cl(Math.round(+b.o)||0,-2,2);if(!v.bass&&RNG[b.t]&&b.t!=='B')v.t=b.t;
+    if(IVL[b.def]&&b.def!=='r')v.def=b.def;
+    v.cells=(b.cells||[]).map(c=>({i:IVL[c.i]?c.i:(v.def||'P1'),x:cl(Math.round(+c.x)||0,-1,1),o:cl(Math.round(+c.o)||0,-2,2)}));
+  },true);
+  toast(`${v.name} je vrnjen na izhodišče.`);
+}
+
+/* ---------- audio ---------- */
+let ac=null,master,pv,clk,vg={},live=[],timer=null,seq=null,holding=-1,raf=0,nowK=-1,wl=null,sil=null;
+const IOS=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+function silentUrl(){
+  const n=4000,b=new Uint8Array(44+n),dv=new DataView(b.buffer),w=(o,s)=>{for(let i=0;i<s.length;i++)b[o+i]=s.charCodeAt(i);};
+  w(0,'RIFF');dv.setUint32(4,36+n,true);w(8,'WAVE');w(12,'fmt ');dv.setUint32(16,16,true);dv.setUint16(20,1,true);dv.setUint16(22,1,true);
+  dv.setUint32(24,8000,true);dv.setUint32(28,8000,true);dv.setUint16(32,1,true);dv.setUint16(34,8,true);w(36,'data');dv.setUint32(40,n,true);b.fill(128,44);
+  return URL.createObjectURL(new Blob([b],{type:'audio/wav'}));
+}
+function unlockAudio(){
+  try{if(navigator.audioSession){if(navigator.audioSession.type!=='playback')navigator.audioSession.type='playback';return;}}catch(e){}
+  if(!IOS)return;
+  try{if(!sil){sil=new Audio(silentUrl());sil.loop=true;sil.setAttribute('playsinline','');}if(sil.paused)sil.play().catch(()=>{});}catch(e){}
+}
+function wake(on){
+  try{
+    if(on){if(!wl&&navigator.wakeLock)navigator.wakeLock.request('screen').then(l=>{wl=l;l.addEventListener('release',()=>{if(wl===l)wl=null;});}).catch(()=>{});}
+    else if(wl){const l=wl;wl=null;l.release().catch(()=>{});}
+  }catch(e){}
+}
+function ensure(){
+  unlockAudio();
+  if(!ac){
+    const C=window.AudioContext||window.webkitAudioContext;if(!C){msg('Ta brskalnik ne podpira zvoka.');return false;}
+    ac=new C();const comp=ac.createDynamicsCompressor();master=ac.createGain();master.gain.value=.9;master.connect(comp);comp.connect(ac.destination);
+    pv=ac.createGain();pv.gain.value=.8;pv.connect(master);clk=ac.createGain();clk.gain.value=.5;clk.connect(master);
+  }
+  if(ac.state!=='running')ac.resume().catch(()=>{});
+  gains();return true;
+}
+function vgOf(id){if(!vg[id]){vg[id]=ac.createGain();vg[id].gain.value=0;vg[id].connect(master);gains();}return vg[id];}
+function gains(){
+  if(!ac)return;const t=ac.currentTime;
+  for(const v of state.voices){const g=vgOf(v.id);let val=v.vol*(audible(v)?1:0);if(state.mine===v.id)val*=state.self?.35:0;g.gain.setTargetAtTime(val,t,.03);}
+}
+function tone(dest,midi,t0,dur){
+  const f=440*2**((midi-69)/12),g=ac.createGain(),o1=ac.createOscillator(),o2=ac.createOscillator(),lp=ac.createBiquadFilter(),g2=ac.createGain();
+  const a=.05,r=Math.min(.15,dur/3),pk=.16;
+  g.gain.value=0;g.gain.setValueAtTime(0,t0);g.gain.linearRampToValueAtTime(pk,t0+a);g.gain.setValueAtTime(pk,t0+Math.max(a,dur-r));g.gain.linearRampToValueAtTime(0,t0+dur);
+  o1.type='triangle';o2.type='sawtooth';o1.frequency.value=f;o2.frequency.value=f;
+  lp.type='lowpass';lp.frequency.value=Math.min(3000,f*3);g2.gain.value=.22;
+  o1.connect(g);o2.connect(g2);g2.connect(lp);lp.connect(g);g.connect(dest);
+  o1.start(t0);o2.start(t0);o1.stop(t0+dur+.05);o2.stop(t0+dur+.05);
+  live.push({g,o:[o1,o2],end:t0+dur});
+}
+function click(t,acc){
+  const o=ac.createOscillator(),g=ac.createGain();o.type='square';o.frequency.value=acc?1760:1320;
+  g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(acc?.25:.14,t+.002);g.gain.exponentialRampToValueAtTime(.0001,t+.05);
+  o.connect(g);g.connect(clk);o.start(t);o.stop(t+.06);live.push({g,o:[o],end:t+.06});
+}
+function stopAll(){
+  if(timer){clearInterval(timer);timer=null;}
+  seq=null;holding=-1;cancelAnimationFrame(raf);wake(false);
+  if(ac){const t=ac.currentTime;for(const n of live){try{const p=n.g.gain;if(p.cancelAndHoldAtTime)p.cancelAndHoldAtTime(t);else{p.cancelScheduledValues(t);p.setValueAtTime(p.value,t);}p.setTargetAtTime(0,t,.03);n.o.forEach(o=>{try{o.stop(t+.25);}catch(e){}});}catch(e){}}}
+  live=[];S.pos=-1;setNow(-1,0);syncT();renderEd();
+}
+function play(){
+  if(seq){stopAll();return;}
+  if(state.mode==='part'){if(!ensure())return;stopAll();playPart();return;}
+  if(!S.segs.length||!ensure())return;
+  stopAll();
+  const spb=60/state.tempo;let t=ac.currentTime+.12;
+  if(state.countIn){for(let i=0;i<state.beats;i++)click(t+i*spb,i===0);t+=state.beats*spb;}
+  seq={next:t,k:0,tl:[],end:0};
+  timer=setInterval(sched,25);sched();raf=requestAnimationFrame(tick);wake(true);syncT();renderEd();
+}
+function sched(){
+  if(!seq)return;if(seq.part){schedPart();return;}const now=ac.currentTime,spb=60/state.tempo;
+  live=live.filter(n=>n.end>now-1);
+  while(!seq.end&&seq.next<now+.2){
+    if(seq.k>=S.segs.length){if(state.loop&&S.segs.length)seq.k=0;else{seq.end=seq.next;break;}}
+    const k=seq.k,sg=S.segs[k],d=sg.beats*spb;
+    for(const v of state.voices){const n=S.notes[v.id]&&S.notes[v.id][k];if(n)tone(vgOf(v.id),n.m,seq.next,d-.02);}
+    if(state.metro)for(let b=Math.ceil(sg.sb-1e-6);b<sg.sb+sg.beats-1e-6;b++)click(seq.next+(b-sg.sb)*spb,b===0);
+    seq.tl.push({k,t:seq.next,d});seq.next+=d;seq.k++;
+  }
+  if(seq.end&&now>seq.end+.1)stopAll();
+}
+function tick(){
+  if(!ac||!seq)return;
+  if(seq.part){tickPart();raf=requestAnimationFrame(tick);return;}
+  const now=ac.currentTime,tl=seq.tl;let cur=-1,fr=0;
+  for(let i=tl.length-1;i>=0;i--)if(tl[i].t<=now){if(now<tl[i].t+tl[i].d){cur=tl[i].k;fr=(now-tl[i].t)/tl[i].d;}break;}
+  if(tl.length>80)tl.splice(0,tl.length-80);
+  setNow(cur,fr);raf=requestAnimationFrame(tick);
+}
+function hold(k,stag){
+  if(state.mode==='part'){holdPart(k,stag);return;}
+  if(!S.segs[k]||!ensure())return;
+  stopAll();holding=k;
+  const items=state.voices.map(v=>({v,n:S.notes[v.id][k]})).filter(o=>o.n).sort((a,b)=>a.n.m-b.n.m);
+  const t=ac.currentTime+.05;
+  items.forEach((o,i)=>tone(vgOf(o.v.id),o.n.m,t+(stag?i*2:0),900));
+  wake(true);setNow(k,0);syncT();renderEd();
+}
+function userHold(k){if(holding===k&&!seq)stopAll();else hold(k,state.stagger);}
+function rehold(){if(holding>=0&&!seq)hold(Math.min(holding,(state.mode==='part'?S.P.n:S.segs.length)-1),false);}
+function prevNote(m,dur){if(seq||holding>=0||!ensure())return;tone(pv,m,ac.currentTime+.02,dur||1.1);}
+function prevChord(k){if(!ensure())return;if(seq||holding>=0)stopAll();const t=ac.currentTime+.03;for(const v of state.voices){const n=S.notes[v.id][k];if(n)tone(pv,n.m,t,2.2);}}
+
+/* ---------- sheet & views (phone) ---------- */
+function setSheetH(){document.documentElement.style.setProperty('--sheeth',sheet?$('#ed').offsetHeight+'px':'0px');}
+function openSheet(){if(!phone)return;sheet=true;document.body.classList.add('sheet');setSheetH();requestAnimationFrame(revealSel);}
+function closeSheet(){sheet=false;document.body.classList.remove('sheet');setSheetH();}
+function revealSel(){
+  if(!phone)return;const el=document.querySelector('#grid .cell.sel');if(!el)return;
+  const r=el.getBoundingClientRect(),head=document.querySelector('#grid .vh'),top=(head?head.offsetHeight:0)+8;
+  const bottom=window.innerHeight-$('#bar').offsetHeight-(sheet?$('#ed').offsetHeight:0)-8;
+  if(r.bottom>bottom)window.scrollBy({top:r.bottom-bottom,behavior:sm()});else if(r.top<top)window.scrollBy({top:r.top-top,behavior:sm()});
+}
+function setView(v){
+  document.body.dataset.view=v;
+  document.querySelectorAll('.tabs [data-view]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.view===v)));
+  closeSheet();window.scrollTo({top:0});
+}
+
+/* ---------- render ---------- */
+function hiNow(k){
+  document.querySelectorAll('#grid .now').forEach(e=>e.classList.remove('now'));
+  if(k>=0)document.querySelectorAll(`#grid [data-s="${k}"],#grid [data-h="${k}"]`).forEach(e=>e.classList.add('now'));
+  nowK=k;renderMy();
+  if(phone&&seq&&k>=0&&!sheet&&document.body.dataset.view==='vaja'){
+    const el=document.querySelector(`#grid .hd[data-h="${k}"]`);
+    if(el){const r=el.getBoundingClientRect(),lim=window.innerHeight-$('#bar').offsetHeight;if(r.bottom>lim-8||r.top<70)el.scrollIntoView({block:'center',behavior:sm()});}
+  }
+}
+function setNow(k,fr){
+  if(k!==nowK)hiNow(k);
+  if(state.mode==='part')return;
+  const ph=$('#ph');if(!ph)return;
+  if(k<0||!S.geo||!seq||!S.segs[k]){ph.setAttribute('visibility','hidden');return;}
+  const sg=S.segs[k],X=S.geo.x(sg.cum+sg.beats*fr);
+  ph.setAttribute('x1',X);ph.setAttribute('x2',X);ph.setAttribute('visibility','visible');
+}
+function reNow(){const k=nowK;nowK=-99;setNow(k,0);}
+const pill=t=>t?`<i class="deg" title="Prst zborovodje">${esc(t)}</i>`:'';
+const degPill=k=>pill(S.deg&&S.deg[k]);
+const chd=(s,k)=>`<span class="cr"><span class="ch">${esc(s.label)}</span>${degPill(k)}</span>`;
+function cellHtml(v,k,s,kl,bc,chg){
+  const n=S.notes[v.id][k];
+  return `<button class="cell${s.first?' '+bc:''}${state.mine===v.id?' row-mine':''}${kl.has(v.id)?' kl':''}${chg(v,k)?' chg':''}${sel.v===v.id&&sel.k===k?' sel':''}" data-v="${v.id}" data-s="${k}" style="--c:${v.c}"><span class="n">${n?nmo(n):'–'}</span><span class="i">${esc(ivlab(v,k))}</span></button>`;
+}
+function renderGrid(){
+  if(state.mode==='part'){renderGridPart();return;}
+  const g=$('#grid'),gw=$('#gw'),segs=S.segs,vs=vo(),kls=segs.map((s,k)=>klSet(k)),chg=chgFn();
+  const ms=v=>`<button class="mini" data-mu="${v.id}" aria-pressed="${!!v.m}" title="Utišaj glas" aria-label="Utišaj ${esc(v.name)}">M</button><button class="mini" data-so="${v.id}" aria-pressed="${!!v.s}" title="Samo ta glas" aria-label="Samo ${esc(v.name)}">S</button>`;
+  let h='';
+  if(phone){
+    const wide=vs.length>5;gw.classList.toggle('wide',wide);g.className='grid v';
+    g.style.gridTemplateColumns=`64px repeat(${vs.length},minmax(${wide?66:0}px,1fr))`;
+    g.style.minWidth=wide?(64+vs.length*66)+'px':'';
+    h='<div class="corner">Takt</div>'+vs.map(v=>`<div class="vh${state.mine===v.id?' row-mine':''}" style="--c:${v.c}"><span class="vn"><i class="dot"></i>${esc(v.name)}</span><span class="ms">${ms(v)}</span></div>`).join('');
+    segs.forEach((s,k)=>{h+=`<button class="hd${s.first?' bt':''}" data-h="${k}" title="Drži ta akord"><b>${s.first?s.bar+1:''}</b>${chd(s,k)}</button>`+vs.map(v=>cellHtml(v,k,s,kls[k],'bt',chg)).join('');});
+  }else{
+    gw.classList.remove('wide');g.className='grid h';
+    const mins=segs.map(s=>Math.max(84,Math.round(s.beats*24)));
+    g.style.gridTemplateColumns='var(--lw) '+segs.map((s,i)=>`minmax(${mins[i]}px,${s.beats}fr)`).join(' ');
+    g.style.minWidth=`calc(var(--lw) + ${mins.reduce((a,b)=>a+b,0)}px)`;
+    h='<div class="lab">Takt</div>'+segs.map((s,k)=>`<button class="hd${s.first?' bl':''}" data-h="${k}" title="Drži ta akord">${s.first?`<b>${s.bar+1}</b>`:''}${chd(s,k)}</button>`).join('');
+    for(const v of vs){
+      h+=`<div class="lab" style="--c:${v.c}"><span class="dot"></span><span class="vn">${esc(v.name)}</span>${ms(v)}</div>`;
+      h+=segs.map((s,k)=>cellHtml(v,k,s,kls[k],'bl',chg)).join('');
+    }
+    h+='<div class="lab">Razmiki</div>'+segs.map((s,k)=>`<div class="gap${s.first?' bl':''}" data-s="${k}" title="Poltoni med sosednjimi glasovi, od spodaj navzgor">${gaps(k).map(d=>`<i class="${d>=1&&d<=2?'k':''}">${d}</i>`).join('')}</div>`).join('');
+  }
+  g.innerHTML=h;
+}
+function renderEd(){
+  if(state.mode==='part'){renderEdPart();return;}
+  const e=$('#ed');
+  if(!S.segs.length){e.innerHTML='<div class="edh"><h2>Ni taktov</h2><button class="btn only-ph" data-act="close">Zapri</button></div><p class="cap">V Nastavitvah vpiši progresijo basa, na primer D | G | Bm | A.</p>';return;}
+  const v=V(sel.v)||vo()[0];sel.v=v.id;sel.k=cl(sel.k,0,S.segs.length-1);
+  const k=sel.k,sg=S.segs[k],c=v.cells[k],n=S.notes[v.id][k];
+  const where=`takt ${sg.bar+1}${sg.n>1?`, ${sg.pos+1}. del`:''} · bas ${nm(sg.bass.l,sg.bass.a)}${S.deg[k]?` · stopnja ${esc(S.deg[k])}`:''}`;
+  let desc;
+  if(v.bass)desc='basov ton iz progresije';
+  else if(!n)desc='ta glas tu molči';
+  else desc=(c.i==='a3'?`terca v tonaliteti, tu ${n.s===3?'mala':'velika'} terca`:IVL[c.i][1])+' nad basom'+(c.x?`, ${c.x>0?'zvišano':'znižano'} za pol tona`:'');
+  let h=`<div class="edh"><h2>${esc(v.name)} <span>· ${where}</span></h2><div class="edn"><div class="seg"><button data-nav="-1" aria-label="Prejšnji del">‹</button><button data-nav="1" aria-label="Naslednji del">›</button></div><button class="btn only-ph" data-act="close">Zapri</button></div></div>`;
+  h+=`<div class="now-note" style="--c:${v.c}"><span class="big">${n?nmo(n):'pavza'}</span><span class="cap" style="margin:0">${desc}</span></div>`;
+  if(!v.bass){
+    h+=`<div class="chips">${IVK.map(key=>`<button class="chip" data-iv="${key}" aria-pressed="${c.i===key}" title="${IVL[key][1]}" aria-label="${IVL[key][1]}"><b>${IVL[key][0]}</b><span>${IVL[key][1]}</span></button>`).join('')}</div>`;
+    h+='<p class="cap only-ph" style="margin:0">m mala · v velika · č čista · zv zvečana · zm zmanjšana · 3 terca v tonaliteti</p>';
+    h+=`<div class="rowc"><div class="seg" role="group" aria-label="Predznak"><button data-x="-1" aria-pressed="${c.x===-1}" aria-label="Znižaj za pol tona">♭</button><button data-x="0" aria-pressed="${!c.x}" aria-label="Brez spremembe">♮</button><button data-x="1" aria-pressed="${c.x===1}" aria-label="Zvišaj za pol tona">♯</button></div>`;
+  }else h+='<div class="rowc">';
+  h+=`<div class="seg" role="group" aria-label="Oktava"><button data-o="-1" aria-label="Oktavo nižje">−</button><span>oktava ${(c.o||0)>0?'+':''}${c.o||0}</span><button data-o="1" aria-label="Oktavo višje">+</button></div></div>`;
+  h+=`<div class="rowc act"><button class="btn" data-act="note">Poslušaj ton</button><button class="btn" data-act="chord">Poslušaj akord</button><button class="btn" data-act="hold" aria-pressed="${holding===k}">${holding===k?'Ustavi držanje':'Drži akord'}</button>${v.bass?'':'<button class="btn" data-act="all">Ta interval v vseh taktih</button>'}<button class="btn" data-act="undo"${hist.length?'':' disabled'}>Razveljavi</button><button class="btn" data-act="vbase"${S.segs.some((s,i)=>chgFn()(v,i))?'':' disabled'}>${esc(v.name)} na izhodišče</button></div>`;
+  if(v.bass)h+='<p class="cap">Basove tone spreminjaš v Nastavitvah, polje Progresija basa.</p>';
+  e.innerHTML=h;
+}
+function renderLegend(){$('#leg').innerHTML=vo().map(v=>`<span style="--c:${v.c}"><i class="dot"></i>${esc(v.name)}</span>`).join('')+'<span style="--c:var(--hi)"><i class="dot"></i>klaster</span>';}
+function drawMap(){
+  if(state.mode==='part'){drawMapPart();return;}
+  const s=$('#map'),W=s.clientWidth,H=s.clientHeight;
+  if(!W||!H||!S.segs.length){s.innerHTML='';S.geo=null;return;}
+  const segs=S.segs,tot=S.total,vs=vo(),all=[];
+  for(const v of vs)for(const n of S.notes[v.id])if(n)all.push(n.m);
+  let lo=Math.min(...all)-2,hi=Math.max(...all)+2;if(hi-lo<14){const c=(hi+lo)/2;lo=c-7;hi=c+7;}
+  const L=40,R=10,T=12,B=28,iw=W-L-R,ih=H-T-B;
+  const x=b=>L+iw*b/tot,y=m=>T+ih*(hi-m)/(hi-lo),rh=Math.max(4,Math.min(18,ih/(hi-lo)*.9));
+  let h='';
+  for(let m=Math.ceil(lo);m<=hi;m++)if(m%12===0)h+=`<line x1="${L}" x2="${W-R}" y1="${y(m)}" y2="${y(m)}" stroke="var(--line)"/><text x="${L-6}" y="${y(m)+4}" text-anchor="end" fill="var(--mut)">C${m/12-1}</text>`;
+  segs.forEach(sg=>{if(!sg.first)return;const X=x(sg.cum);h+=`<line x1="${X}" x2="${X}" y1="${T}" y2="${H-B}" stroke="var(--ink)" stroke-opacity=".45"/>`;if(W>=520||sg.bar%2===0)h+=`<text x="${X+4}" y="${H-8}" fill="var(--mut)">${sg.bar+1}</text>`;});
+  segs.forEach((sg,k)=>{const ms=sorted(k);for(let i=1;i<ms.length;i++){const d=ms[i]-ms[i-1];if(d>=1&&d<=2)h+=`<rect x="${x(sg.cum)+1}" width="${Math.max(0,x(sg.cum+sg.beats)-x(sg.cum)-2)}" y="${y(ms[i])-rh/2-3}" height="${y(ms[i-1])-y(ms[i])+rh+6}" rx="5" fill="var(--hi)" opacity=".8"/>`;}});
+  for(const v of vs){const mine=state.mine===v.id;S.notes[v.id].forEach((n,k)=>{if(!n)return;const sg=segs[k],x0=x(sg.cum)+3,w=Math.max(2,x(sg.cum+sg.beats)-x(sg.cum)-6);
+    h+=`<rect x="${x0}" y="${y(n.m)-rh/2}" width="${w}" height="${rh}" rx="${Math.min(4,rh/2)}" fill="${v.c}"${mine?' stroke="var(--ink)" stroke-width="2"':''} opacity="${audible(v)?1:.35}"><title>${esc(v.name)}: ${nmt(n)}</title></rect>`;
+    if(rh>=15&&w>=40)h+=`<text x="${x0+5}" y="${y(n.m)+4.5}" fill="#fff" style="stroke:none">${nmt(n)}</text>`;});}
+  h+=`<line id="ph" x1="0" x2="0" y1="${T}" y2="${H-B}" stroke="var(--ink)" stroke-width="2" visibility="hidden"/>`;
+  s.innerHTML=h;S.geo={x};
+}
+function renderVoices(){
+  $('#voices').innerHTML=vo().map(v=>`<div class="vrow" style="--c:${v.c}"><span class="dot"></span><input type="text" id="vn-${v.id}" data-vn="${v.id}" value="${esc(v.name)}" aria-label="Ime glasu" maxlength="24">${v.bass?'<span class="cap" style="margin:0">bas</span>':`<select id="vt-${v.id}" data-vt="${v.id}" aria-label="Lega glasu">${['S','A','T'].map(t=>`<option value="${t}"${v.t===t?' selected':''}>${TYP[t]}</option>`).join('')}</select>`}
+  <div class="more"><div class="seg"><button data-vo="${v.id}" data-d="-1" aria-label="Cel glas oktavo nižje">−</button><span>oktava ${v.o>0?'+':''}${v.o}</span><button data-vo="${v.id}" data-d="1" aria-label="Cel glas oktavo višje">+</button></div>
+  <label for="vv-${v.id}">Glasnost <input type="range" min="0" max="1" step="0.05" value="${v.vol}" data-vv="${v.id}" id="vv-${v.id}"></label>
+  ${v.bass?'':`<select id="va-${v.id}" data-va="${v.id}" aria-label="Nastavi interval v vseh taktih"><option value="">Vsi takti na …</option>${IVK.map(k=>`<option value="${k}">${IVL[k][0]} · ${IVL[k][1]}</option>`).join('')}</select><button class="btn" data-vd="${v.id}">Odstrani</button>`}</div></div>`).join('');
+}
+function fillSettings(){
+  $('#prog').value=state.prog;$('#deg').value=state.deg||'';
+  {const t=((4*state.key)%7+7)%7;let mis=false;const cs=S.segs.map((sg,k)=>{const c=degOf(sg);if(S.deg[k]&&S.deg[k]!==c){mis=true;return `<b>${c}</b>`;}return c;});
+   $('#dhint').innerHTML=S.segs.length?`Po tonaliteti ${nm(t,keyAccK(state.key,t))}-dur bi bilo: ${cs.join(' ')}.${mis?' Krepko so mesta, kjer se tvoj vnos razlikuje.':''}`:'';}
+  $('#key').innerHTML=KEYS.map(k=>{const t=((4*k)%7+7)%7,r=(t+5)%7;return `<option value="${k}">${nm(t,keyAccK(k,t))}-dur / ${nm(r,keyAccK(k,r)).toLowerCase()}-mol (${k?Math.abs(k)+(k>0?'♯':'♭'):'brez predznakov'})</option>`;}).join('');
+  $('#key').value=state.key;
+  $('#beats').innerHTML=[2,3,4,5,6].map(b=>`<option value="${b}">${b}/4</option>`).join('');$('#beats').value=state.beats;
+  $('#nt').value=state.nt;
+}
+function renderMy(){
+  if(state.mode==='part'){renderMyPart();return;}
+  const e=$('#myn'),v=V(state.mine);
+  if(!v||!S.segs.length){e.innerHTML=`<span>${phone?'Svoj glas izberi zgoraj, pri Moj glas.':'Izberi svoj glas, da ga utišaš in vidiš svoj ton.'}</span>`;return;}
+  const k=nowK>=0?nowK:sel.k,n=S.notes[v.id][k],nx=S.notes[v.id][(k+1)%S.segs.length];
+  e.style.setProperty('--c',v.c);
+  e.innerHTML=`<span>${esc(v.name)}, takt ${S.segs[k].bar+1}</span>${degPill(k)}<b>${n?nmo(n):'pavza'}</b><span>nato ${nx?nmt(nx):'pavza'}</span>`;
+}
+function syncT(){
+  $('#tempo').value=state.tempo;$('#tv').textContent=state.tempo+' /min';
+  for(const [id,k] of [['loop','loop'],['metro','metro'],['cnt','countIn'],['self','self'],['stag','stagger']])$('#'+id).setAttribute('aria-pressed',String(!!state[k]));
+  $('#play').setAttribute('aria-label',seq?'Ustavi':'Predvajaj');
+  $('#pi').innerHTML=seq?'<rect x="6" y="6" width="12" height="12" rx="1.5"/>':'<path d="M7 4.5v15l12.5-7.5z"/>';
+  $('#hold').setAttribute('aria-pressed',String(holding>=0));$('#hold').textContent=holding>=0?'Ustavi držanje':'Drži akord';
+  $('#mine').innerHTML=[['','noben',''],...vo().map(v=>[v.id,v.name,v.c])].map(([id,n,c])=>`<button class="mchip" data-mine="${id}" aria-pressed="${state.mine===id}"${c?` style="--c:${c}"`:''}>${c?'<i class="dot"></i>':''}${esc(n)}</button>`).join('');
+  $('#undo').disabled=!hist.length;
+  $('#base').disabled=state.mode==='part'?!baseDiffP():!baseDiff();
+  $('#modeseg').innerHTML=`<button data-mode="harm" aria-pressed="${state.mode==='harm'}">Harmonija</button><button data-mode="part" aria-pressed="${state.mode==='part'}">Note</button>`;
+  if(state.mode==='part'){const A=state.loopA,B=state.loopB;$('#pre').innerHTML=A<0?'<button class="mchip" data-loophint>Zanka: cela pesem</button>':`<button class="mchip" data-loopclr aria-pressed="true" title="Izklopi zanko">Zanka: ${A===B?barLab(A):'takti '+barNum(A)+'–'+barNum(B)} ✕</button>`;}
+  else{const cur=matchPreset();$('#pre').innerHTML=Object.entries(PRE).map(([k,p])=>`<button class="mchip" data-pre="${k}" aria-pressed="${cur===k}" title="${p.name}">${p.short}</button>`).join('');}
+}
+function render(full){
+  document.body.classList.toggle('mode-part',state.mode==='part');
+  renderGrid();renderEd();drawMap();renderLegend();
+  if(full){renderVoices();renderPartTxt();}
+  fillSettings();
+  $('#perr').textContent=S.err.length?'Tega ne razumem in sem preskočil: '+S.err.join(', '):'';
+  syncT();gains();reNow();
+}
+
+/* ---------- events ---------- */
+$('#grid').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;const d=b.dataset;
+  if(d.mu){edit(()=>{const v=V(d.mu);v.m=!v.m;if(v.m)v.s=false;},false,true);return;}
+  if(d.so){edit(()=>{const v=V(d.so);v.s=!v.s;if(v.s)v.m=false;},false,true);return;}
+  if(d.h!==undefined){if(state.mode==='part'){loopTap(+d.h);return;}sel.k=+d.h;userHold(sel.k);renderGrid();reNow();return;}
+  if(d.v){
+    const same=sel.v===d.v&&sel.k===+d.s&&sheet;
+    sel={v:d.v,k:+d.s};renderGrid();renderEd();reNow();
+    if(phone){if(same){closeSheet();return;}openSheet();}
+    if(state.mode==='part')return;
+    const n=S.notes[sel.v][sel.k];if(n)prevNote(n.m);
+  }
+});
+$('#ed').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;const d=b.dataset;
+  if(state.mode==='part'){edPartClick(b,d);return;}
+  if(d.act==='close'){closeSheet();return;}
+  const v=V(sel.v);if(!v)return;const k=sel.k,c=v.cells[k];
+  const pre=()=>{const n=S.notes[v.id][sel.k];if(n)prevNote(n.m);};
+  if(d.nav){sel.k=(k+ +d.nav+S.segs.length)%S.segs.length;renderGrid();renderEd();reNow();revealSel();pre();return;}
+  if(d.iv){edit(()=>{c.i=d.iv;});pre();return;}
+  if(d.x!==undefined){edit(()=>{c.x=+d.x;});pre();return;}
+  if(d.o){edit(()=>{c.o=cl((c.o||0)+ +d.o,-2,2);});pre();return;}
+  if(d.act==='note'){const n=S.notes[v.id][k];if(n){if(seq||holding>=0)stopAll();prevNote(n.m,1.4);}}
+  if(d.act==='chord')prevChord(k);
+  if(d.act==='hold')userHold(k);
+  if(d.act==='undo'){undo();return;}
+  if(d.act==='vbase'){voiceToBase(v.id);return;}
+  if(d.act==='all')edit(()=>{v.cells.forEach(x=>{x.i=c.i;x.x=c.x||0;x.o=0;});v.def=c.i==='r'?v.def:c.i;});
+});
+$('.tabs').addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(b)setView(b.dataset.view);});
+$('#play').addEventListener('click',play);
+$('#hold').addEventListener('click',()=>userHold(sel.k));
+const setTempo=t=>{state.tempo=cl(Math.round(t),40,160);$('#tempo').value=state.tempo;$('#tv').textContent=state.tempo+' /min';save();};
+$('#tempo').addEventListener('input',e=>setTempo(+e.target.value));
+$('#tdn').addEventListener('click',()=>setTempo(state.tempo-4));
+$('#tup').addEventListener('click',()=>setTempo(state.tempo+4));
+for(const [id,k] of [['loop','loop'],['metro','metro'],['cnt','countIn'],['self','self'],['stag','stagger']])
+  $('#'+id).addEventListener('click',()=>{state[k]=!state[k];syncT();gains();save();});
+$('#mine').addEventListener('click',e=>{const b=e.target.closest('[data-mine]');if(!b)return;state.mine=b.dataset.mine;save();render(false);});
+$('#undo').addEventListener('click',undo);
+$('#modebar').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;const d=b.dataset;
+  if(d.mode){if(state.mode!==d.mode){stopAll();closeSheet();state.mode=d.mode;sel.k=0;save();render(true);toast(d.mode==='part'?'Način Note: tapni celico in vnašaj note iz partiture.':'Način Harmonija: intervali nad basom.');}return;}
+  if(d.pre){applyPreset(d.pre);return;}
+  if(d.loopclr!==undefined){state.loopA=state.loopB=-1;save();renderGrid();reNow();syncT();toast('Zanka je izklopljena.');return;}
+  if(d.loophint!==undefined){toast('Tapni številko takta v tabeli, da nastaviš zanko.');}
+});
+$('#ed').addEventListener('focusin',e=>{if(e.target.id==='bartxt')pushU();});
+$('#ed').addEventListener('input',e=>{if(e.target.id!=='bartxt')return;const v=V(sel.v);if(!v)return;setBar(v,sel.k,e.target.value);compute();renderGrid();drawMap();reNow();updBarSt();$('#undo').disabled=!hist.length;save();});
+$('#ptxt').addEventListener('focusin',e=>{if(e.target.dataset&&e.target.dataset.pt)pushU();});
+$('#ptxt').addEventListener('input',e=>{const id=e.target.dataset&&e.target.dataset.pt;if(!id)return;const v=V(id);if(!v)return;v.part=e.target.value.slice(0,12000);compute();renderGrid();drawMap();if(state.mode==='part')renderEd();reNow();save();});
+$('#pickup').addEventListener('change',e=>edit(()=>{state.pickup=cl(+e.target.value,0,state.beats-1);},true));
+$('#fromharm').addEventListener('click',fromHarm);
+$('#clrpart').addEventListener('click',()=>{edit(()=>{state.voices.forEach(v=>{v.part='';});},true);toast('Vse note so pobrisane. Razveljavi, če si se zmotil.');});
+$('#base').addEventListener('click',()=>{if(state.mode==='part')toBaseP();else toBase();});
+$('#setbase').addEventListener('click',()=>{setBase();setBaseP();syncT();renderGrid();renderEd();reNow();msg('Trenutno stanje (intervali in note) je shranjeno kot izhodišče.');});
+document.addEventListener('keydown',e=>{
+  if(e.target.closest('input,textarea,select'))return;
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();undo();}
+  else if(e.key===' '&&!e.target.closest('button')){e.preventDefault();play();}
+  else if(e.key==='Escape'&&sheet)closeSheet();
+});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&(seq||holding>=0))wake(true);});
+const applyProg=()=>edit(()=>{state.prog=$('#prog').value.slice(0,400);state.deg=$('#deg').value.slice(0,200);state.key=+$('#key').value;state.beats=+$('#beats').value;state.nt=$('#nt').value;if(state.pickup>=state.beats)state.pickup=0;},true);
+$('#apply').addEventListener('click',applyProg);
+for(const id of ['#prog','#deg'])$(id).addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();applyProg();e.target.blur();}});
+for(const id of ['#key','#beats','#nt'])$(id).addEventListener('change',applyProg);
+const vp=$('#voices');
+vp.addEventListener('input',e=>{
+  const t=e.target,d=t.dataset;
+  if(d.vn){const v=V(d.vn);if(v){v.name=t.value.slice(0,24)||'Glas';renderGrid();renderEd();renderLegend();syncT();renderMy();reNow();save();}}
+  if(d.vv){const v=V(d.vv);if(v){v.vol=+t.value;gains();save();}}
+});
+vp.addEventListener('change',e=>{
+  const t=e.target,d=t.dataset;
+  if(d.vt)edit(()=>{V(d.vt).t=t.value;},true);
+  if(d.va&&t.value){const val=t.value;edit(()=>{const v=V(d.va);v.cells.forEach(c=>{c.i=val;c.x=0;c.o=0;});if(val!=='r')v.def=val;},true);}
+});
+vp.addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;const d=b.dataset;
+  if(d.vd)edit(()=>{state.voices=state.voices.filter(v=>v.id!==d.vd);if(state.mine===d.vd)state.mine='';},true);
+  if(d.vo)edit(()=>{const v=V(d.vo);v.o=cl(v.o+ +d.d,-2,2);},true);
+});
+$('#add').addEventListener('click',()=>{
+  if(state.voices.length>=10){msg('Največ 10 glasov.');return;}
+  edit(()=>{
+    const used=new Set(state.voices.map(v=>v.c)),c=COLS.find(x=>!used.has(x))||COLS[state.voices.length%COLS.length];
+    let i=1,id;do{id='V'+i++;}while(V(id));
+    const bi=state.voices.findIndex(v=>v.bass),n=S.segs.length;
+    state.voices.splice(bi<0?state.voices.length:bi,0,{id,name:'Glas '+state.voices.length,t:'S',vol:.8,o:0,def:'M2',c,m:false,s:false,part:'',cells:Array.from({length:n},()=>({i:'M2',x:0,o:0}))});
+    sel={v:id,k:sel.k};
+  },true);
+  msg('Glas je dodan. Interval mu nastaviš na zavihku Vaja.');
+});
+function exportCode(){
+  const o=JSON.parse(JSON.stringify(state)),n=S.segs.length;delete o.mine;delete o.self;delete o.loopA;delete o.loopB;
+  o.voices.forEach(v=>{v.cells=v.cells.slice(0,n);delete v.m;delete v.s;});
+  let s='';new TextEncoder().encode(JSON.stringify(o)).forEach(c=>{s+=String.fromCharCode(c);});return btoa(s);
+}
+function importCode(str){const bin=atob(str.replace(/\s+/g,''));return JSON.parse(new TextDecoder().decode(Uint8Array.from(bin,c=>c.charCodeAt(0))));}
+$('#copy').addEventListener('click',()=>{
+  const code=exportCode(),ta=$('#code');ta.value=code;
+  const fb=()=>{ta.focus();ta.select();msg('Koda je označena. Kopiraj jo ročno.');};
+  try{navigator.clipboard.writeText(code).then(()=>msg('Koda je kopirana. Pošlji jo pevcem.'),fb);}catch(e){fb();}
+});
+$('#load').addEventListener('click',()=>{
+  let o;try{o=importCode($('#code').value);}catch(e){msg('Kode ni bilo mogoče prebrati. Preveri, da si prilepil celo kodo.');return;}
+  const mine=state.mine,self=state.self;
+  edit(()=>{state=norm(o);if(V(mine))state.mine=mine;state.self=self;},true);setBase();setBaseP();msg('Nastavitve so naložene in shranjene kot izhodišče.');
+});
+$('#reset').addEventListener('click',()=>{const mine=state.mine;edit(()=>{state=norm({});if(V(mine))state.mine=mine;},true);setBase();setBaseP();msg('Primer je spet naložen in je novo izhodišče. Če si se zmotil, pritisni Razveljavi.');});
+const onMQ=()=>{phone=mq.matches;closeSheet();render(true);};
+if(mq.addEventListener)mq.addEventListener('change',onMQ);else if(mq.addListener)mq.addListener(onMQ);
+
+/* ---------- boot ---------- */
+const DATA_V=3;
+function start(d){
+  if(!d||d.v!==DATA_V)d={};
+  let o=d&&d.state;
+  if(!o){try{o=JSON.parse(localStorage.getItem('klaster-trener-3')||'null');}catch(e){o=null;}}
+  const OLD='D | G | D | Bm | A | G | C | B A';
+  if(o&&o.prog===OLD)o.prog=DEF.prog;
+  state=norm(o||{});compute();
+  let b=d&&d.base;
+  if(!b){try{b=JSON.parse(localStorage.getItem('klaster-trener-base-3')||'null');}catch(e){b=null;}}
+  if(b&&typeof b==='object'&&b.prog===OLD)b.prog=DEF.prog;
+  if(b&&typeof b==='object'&&Array.isArray(b.voices))base=b;else{base=musical(state,S.segs.length);saveBase();}
+  let bp=d&&d.baseP;
+  if(!bp){try{bp=JSON.parse(localStorage.getItem('klaster-trener-baseP-3')||'null');}catch(e){bp=null;}}
+  if(bp&&typeof bp==='object'&&Array.isArray(bp.voices))baseP=bp;else{baseP={pickup:state.pickup,voices:state.voices.map(v=>({id:v.id,part:String(v.part||'')}))};saveBaseP();}
+  render(true);
+  const mapRO=new ResizeObserver(()=>{drawMap();reNow();});mapRO.observe($('#map'));
+  const barRO=new ResizeObserver(()=>{document.documentElement.style.setProperty('--barh',$('#bar').offsetHeight+'px');});barRO.observe($('#bar'));
+  const edRO=new ResizeObserver(()=>{if(sheet)setSheetH();});edRO.observe($('#ed'));
+}
+window.claude?.hot?.snapshot?.(()=>({v:DATA_V,state,base,baseP}));
+window.claude?.hot?.ready?window.claude.hot.ready(start):start(window.claude?.hot?.data??{});
+}
+</script>
+<script>if('serviceWorker' in navigator&&location.protocol==='https:'){addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{});});}</script>
+</body>
+</html>
